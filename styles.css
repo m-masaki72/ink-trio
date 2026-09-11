@@ -1,0 +1,295 @@
+  :root{
+    /* 部屋と筐体 */
+    --room:#0a0910;
+    --shell:#514b44;
+    --shell-hi:#7b746a;
+    --shell-lo:#211e1b;
+    --seam:#35312c;
+    --glass:#06080a;
+    /* 読み取り値の琥珀蛍光体 */
+    --amber:#f2b45c;
+    --amber-dim:#a07c42;
+    /* 文字 */
+    --text:#ece6db;
+    --dim:#a89e90;
+    --good:#7fd6a0;
+    --rule:#3d3830;
+    --press:#1a1714;
+    --press-2:#2b2722;
+    --cell:clamp(40px, calc((100vw - 96px) / 5), 64px);
+    --gap:5px;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;padding:0}
+  body{
+    background:radial-gradient(140% 90% at 50% -20%, #1b1822 0%, var(--room) 60%), var(--room);
+    color:var(--text);
+    font-family:"Zen Kaku Gothic New", system-ui, -apple-system, "Hiragino Kaku Gothic ProN", "Noto Sans JP", sans-serif;
+    font-feature-settings:"palt" 1;
+    min-height:100vh;line-height:1.6;
+    padding:32px 16px calc(64px + env(safe-area-inset-bottom, 0px));
+  }
+  .wrap{max-width:900px;margin:0 auto}
+
+  .nameplate{display:flex;align-items:baseline;gap:12px;flex-wrap:wrap;
+    padding:0 2px 14px;margin-bottom:16px;
+    border-bottom:1px solid rgba(0,0,0,.34);box-shadow:0 1px 0 var(--shell-hi)}
+  .nameplate p{margin:0;font-size:12px;color:#cdc2ae;letter-spacing:.04em;
+    text-shadow:0 1px 1px rgba(0,0,0,.5)}
+  h1{font-size:clamp(20px,3.6vw,25px);font-weight:900;letter-spacing:.05em;margin:0;
+    color:#fe628c;line-height:1.1}
+  @supports ((background-clip:text) or (-webkit-background-clip:text)){
+    h1{background:linear-gradient(96deg,#fe628c 0%,#e8d716 46%,#1718e1 100%);
+      -webkit-background-clip:text;background-clip:text;color:transparent;
+      -webkit-text-fill-color:transparent}
+  }
+
+  /* ---------- 筐体 ---------- */
+  .console{
+    background:linear-gradient(180deg, #565048 0%, #474239 100%);
+    border-radius:10px;padding:16px clamp(14px,3vw,24px) 16px;
+    box-shadow:
+      0 1px 0 var(--shell-hi) inset,          /* 上面の受光 1本 */
+      0 -1px 0 var(--shell-lo) inset,
+      0 26px 50px -28px #000;                 /* 落ち影 1本 */
+  }
+  .screens{display:flex;gap:clamp(16px,4vw,36px);align-items:flex-start;flex-wrap:wrap;
+    justify-content:center}
+  .undobar{display:flex;justify-content:center}
+  .panel{display:flex;flex-direction:column;gap:0}
+  /* 刻印ラベルは画面の下 */
+  .panel h2{margin:10px 0 0;display:flex;flex-direction:column;align-items:center;gap:1px;
+    font-size:12px;font-weight:700;letter-spacing:.22em;color:#efe7d6;text-align:center;
+    text-shadow:0 1px 1px rgba(0,0,0,.55)}
+  .panel h2 small{font-size:10.5px;font-weight:400;letter-spacing:.06em;color:#cdc2ae;
+    text-shadow:none}
+
+  /* ---------- 画面窓 ---------- */
+  .sheet{position:relative;padding:13px;border-radius:5px;background:var(--glass);
+    box-shadow:
+      0 0 0 1px #000 inset,
+      0 3px 12px rgba(0,0,0,.85) inset,
+      0 1px 0 var(--shell-hi);
+  }
+  .sheet svg.tombo{position:absolute;inset:2px;width:calc(100% - 4px);height:calc(100% - 4px);
+    pointer-events:none;z-index:1}
+
+  .grid{display:grid;grid-template-columns:repeat(5,var(--cell));position:relative;
+    -webkit-touch-callout:none;-webkit-user-select:none;user-select:none;touch-action:manipulation;
+    gap:var(--gap);background:#100e13;padding:var(--gap);border-radius:2px;
+    box-shadow:0 0 0 1px rgba(0,0,0,.9) inset}
+
+  .cell{width:var(--cell);height:var(--cell);border:0;padding:0;margin:0;
+    box-shadow:0 0 0 1px rgba(0,0,0,.5) inset;
+    background:#131119;border-radius:2px;position:relative;overflow:hidden;
+    transition:background-color .16s ease, box-shadow .22s ease}
+  /* 受光のハイライト。左上から当たる想定 */
+  .cell::before{content:"";position:absolute;inset:0;pointer-events:none;z-index:1;
+    background:
+      radial-gradient(115% 85% at 27% 18%, rgba(255,255,255,.30), rgba(255,255,255,0) 58%),
+      linear-gradient(180deg, rgba(255,255,255,.07) 0%, rgba(0,0,0,.26) 100%)}
+  .cell .miss,.cell .tag,.cell .num{z-index:2}
+  button.cell{cursor:pointer}
+  button.cell:hover{outline:2px solid rgba(255,255,255,.6);outline-offset:-2px}
+  button.cell:focus-visible{outline:3px solid var(--amber);outline-offset:2px;z-index:3}
+  button.cell:active{transform:scale(.94)}
+
+  /* ---------- ブラウン管の質感 ---------- */
+  /* 発光は三段。芯・にじみ・窓全体へのかぶり */
+  .screen .cell.lit{box-shadow:
+    0 0 0 1px rgba(0,0,0,.55) inset,
+    0 0 6px -1px var(--c),
+    0 0 18px -4px var(--c),
+    0 0 40px -14px var(--c)}
+  .grid.proof .cell.lit{box-shadow:0 0 0 1px rgba(0,0,0,.55) inset}
+  .screen .grid::after{content:"";position:absolute;inset:0;pointer-events:none;z-index:4;
+    border-radius:2px;
+    background:repeating-linear-gradient(to bottom,
+      rgba(0,0,0,.20) 0 1px, rgba(0,0,0,0) 1px 3px)}
+  /* 曲面ガラス：四隅の落ち込みと、斜めの映り込み1本 */
+  .screen .sheet::after{content:"";position:absolute;inset:0;pointer-events:none;z-index:5;
+    border-radius:5px;
+    background:
+      radial-gradient(120% 120% at 50% 45%, rgba(0,0,0,0) 58%, rgba(0,0,0,.55) 100%),
+      linear-gradient(122deg, rgba(255,255,255,0) 42%, rgba(210,235,255,.045) 50%, rgba(255,255,255,0) 58%)}
+
+  /* ---------- 目印 ---------- */
+  .tag{position:absolute;left:0;right:0;bottom:0;display:flex;height:22%;
+    opacity:0;transition:opacity .14s ease}
+  .tag.show{opacity:1}
+  .tag span{flex:1;margin:0 1px 1px;border-radius:1px;background:currentColor;opacity:.14;
+    display:flex;align-items:center;justify-content:center;font-size:0;line-height:1}
+  .tag span.on{opacity:.95}
+  .tag.letters{height:38%}
+  .tag.letters span{background:none;opacity:.2;color:currentColor;font-weight:700;
+    font-size:calc(var(--cell) * .27);margin:0}
+  .tag.letters span.on{opacity:1}
+  .num{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;
+    color:currentColor;font-weight:900;font-size:calc(var(--cell) * .44);
+    font-variant-numeric:tabular-nums;opacity:0;transition:opacity .14s ease}
+  .num.show{opacity:.92}
+  .cell .miss{position:absolute;top:7%;right:7%;width:26%;height:26%;border-radius:50%;
+    background:transparent;border:2px solid #fff;
+    box-shadow:0 0 0 2px rgba(0,0,0,.7), 0 0 0 2px rgba(0,0,0,.7) inset;
+    opacity:0;transition:opacity .14s}
+  .cell .miss.show{opacity:1}
+
+  /* ---------- 校了 ---------- */
+  .finish{position:absolute;inset:0;z-index:6;border-radius:5px;cursor:pointer;
+    display:flex;align-items:center;justify-content:center;
+    background:rgba(6,8,10,.42)}
+  .finish[hidden]{display:none}
+  .stamp{--s:clamp(92px,24vw,124px);width:var(--s);height:var(--s);border-radius:50%;
+    border:4px solid #ff5a4d;color:#ff5a4d;display:flex;align-items:center;justify-content:center;
+    font-size:calc(var(--s) * .3);font-weight:900;letter-spacing:.14em;
+    box-shadow:0 0 0 3px rgba(255,90,77,.26) inset, 0 0 22px -6px #ff5a4d;
+    transform:rotate(-12deg);
+    animation:stampIn .3s cubic-bezier(.2,1.5,.4,1) both}
+  @keyframes stampIn{
+    0%{opacity:0;transform:rotate(-30deg) scale(2.4)}
+    62%{opacity:1;transform:rotate(-8deg) scale(.9)}
+    100%{opacity:1;transform:rotate(-12deg) scale(1)}}
+  @keyframes doneGlow{
+    0%{box-shadow:0 0 0 0 rgba(255,255,255,.5), 0 0 0 0 rgba(255,90,77,.35)}
+    100%{box-shadow:0 0 0 16px rgba(255,255,255,0), 0 0 46px 12px rgba(255,90,77,0)}}
+  .grid.done{animation:doneGlow .65s ease-out both}
+  @keyframes wet{0%{filter:brightness(1.55) saturate(1.1)}100%{filter:none}}
+  .cell.wet{animation:wet .22s ease-out both}
+  @keyframes lift{0%{filter:brightness(.5)}100%{filter:none}}
+  .cell.lift{animation:lift .2s ease-out both}
+  @keyframes pulse{0%{filter:none}32%{filter:brightness(1.8) saturate(1.15)}100%{filter:none}}
+  .cell.pulse{animation:pulse .34s ease-out both}
+
+  /* ---------- 戻すキー ---------- */
+  .undobar{margin-top:16px}
+  button.undo{display:inline-flex;align-items:center;justify-content:center;gap:10px;
+    min-height:50px;padding:12px 32px;font-size:15.5px;font-weight:700;letter-spacing:.12em;
+    color:#241f19;
+    background:linear-gradient(180deg,#efe7d6 0%,#cfc4ae 100%);
+    box-shadow:0 1px 0 rgba(255,255,255,.7) inset, 0 -2px 0 rgba(0,0,0,.22) inset,
+      0 2px 4px rgba(0,0,0,.45)}
+  button.undo:hover{background:linear-gradient(180deg,#f7f0e2 0%,#d8cdb7 100%)}
+  button.undo:active{background:linear-gradient(180deg,#cfc4ae 0%,#bcb19b 100%);
+    box-shadow:0 2px 5px rgba(0,0,0,.5) inset}
+  button.undo svg{width:19px;height:19px;flex:none;fill:none;stroke:currentColor;
+    stroke-width:2.1;stroke-linecap:round;stroke-linejoin:round}
+  button.undo:disabled{opacity:.28;box-shadow:0 1px 0 rgba(255,255,255,.4) inset}
+
+  /* ---------- 読み取り窓 ---------- */
+  /* 画面の区画と操作の区画を継ぎ目で分ける */
+  .controls{margin-top:18px;padding-top:16px;
+    border-top:1px solid rgba(0,0,0,.42);box-shadow:0 1px 0 var(--shell-hi) inset}
+  .deck{display:grid;grid-template-columns:1fr auto;align-items:center;gap:12px 18px;
+    margin:0 0 14px;padding:13px 16px;border-radius:4px;
+    background:#17150f;
+    box-shadow:0 0 0 1px #000 inset, 0 2px 9px rgba(0,0,0,.7) inset, 0 1px 0 var(--shell-hi)}
+  .next{display:flex;align-items:center;gap:12px}
+  .blob{width:40px;height:40px;border-radius:50%;flex:none;
+    box-shadow:0 0 0 1px rgba(0,0,0,.7) inset, 0 0 16px -4px currentColor}
+  .rest{display:flex;gap:5px;align-items:center;margin-left:2px}
+  .rest i{width:14px;height:14px;border-radius:50%;display:block;
+    box-shadow:0 0 0 1px rgba(0,0,0,.7) inset, 0 0 9px -3px currentColor}
+  .blob.spent{background:transparent !important;
+    box-shadow:0 0 0 2px rgba(242,180,92,.35) inset}
+  @keyframes nudge{0%,100%{transform:translateX(0)}25%{transform:translateX(-4px)}75%{transform:translateX(4px)}}
+  .deck.spent{animation:nudge .18s ease-in-out}
+  .next-label{font-size:11.5px;color:var(--amber-dim);letter-spacing:.12em}
+  .next-name{font-size:17px;font-weight:700;letter-spacing:.06em;color:var(--amber);
+    text-shadow:0 0 12px rgba(242,180,92,.4)}
+  .counts{display:flex;gap:22px;text-align:right;justify-self:end}
+  .counts div span{display:block;font-size:11.5px;color:var(--amber-dim);letter-spacing:.12em}
+  .counts div strong{font-size:24px;font-weight:700;font-variant-numeric:tabular-nums;
+    color:var(--amber);text-shadow:0 0 14px rgba(242,180,92,.45);letter-spacing:.04em}
+
+  /* ---------- 筐体上のキー ---------- */
+  .bar{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+  button.btn{font:inherit;font-size:13.5px;color:#e9e3d8;cursor:pointer;
+    background:linear-gradient(180deg,#4b463f 0%,#37332d 100%);
+    border:0;border-radius:3px;padding:8px 15px;
+    box-shadow:0 1px 0 rgba(255,255,255,.14) inset, 0 -1px 0 rgba(0,0,0,.5) inset, 0 1px 2px rgba(0,0,0,.5);
+    transition:background .14s, color .14s, box-shadow .14s}
+  button.btn:hover{background:linear-gradient(180deg,#57514a 0%,#413c35 100%)}
+  button.btn:focus-visible{outline:2px solid var(--amber);outline-offset:2px}
+  button.btn[aria-pressed="true"]{
+    background:linear-gradient(180deg,#2a2620 0%,#322d26 100%);
+    color:var(--amber);text-shadow:0 0 10px rgba(242,180,92,.5);
+    box-shadow:0 2px 5px rgba(0,0,0,.6) inset, 0 0 0 1px #000 inset}
+  button.btn:disabled{opacity:.4;cursor:not-allowed}
+  .seg{display:flex;gap:2px}
+
+  /* ---------- インク表（筐体に刷られた参照） ---------- */
+  .inkkey{margin-top:16px;padding-top:14px;display:flex;align-items:center;
+    gap:8px 16px;flex-wrap:wrap;
+    border-top:1px solid rgba(0,0,0,.34);box-shadow:0 1px 0 var(--shell-hi) inset}
+  .inkkey-label{font-size:10.5px;font-weight:700;letter-spacing:.2em;color:#cdc2ae;
+    text-shadow:0 1px 1px rgba(0,0,0,.5)}
+
+  /* ---------- 設定 ---------- */
+  .opts{border:1px solid var(--rule);border-radius:4px;background:var(--press-2);
+    padding:14px 16px;margin:12px 0 0;display:grid;gap:12px}
+  .opts[hidden]{display:none}
+  .opt-row{display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+  .opt-row > span{font-size:12.5px;color:var(--dim);min-width:3.2em}
+  #saveInfo{min-width:auto}
+  #opts::after{content:"　＋";font-size:11px;opacity:.6}
+  #opts[aria-expanded="true"]::after{content:"　−"}
+
+  .statusline{margin:20px 0 0;padding:2px 0 2px 14px;min-height:3em;
+    border-left:2px solid var(--amber-dim)}
+  .status{margin:0;font-size:15px;color:var(--text)}
+  .status.win{color:var(--good);font-weight:700}
+  .count{margin:3px 0 0;font-size:13px;color:var(--dim);
+    font-variant-numeric:tabular-nums;min-height:1.4em}
+
+  .tally{margin-top:32px;border-top:1px solid var(--rule);padding:18px 2px 0}
+  .tally h3{margin:0 0 10px;font-size:12.5px;font-weight:700;color:var(--dim);letter-spacing:.18em}
+  .tally dl{display:grid;grid-template-columns:auto 1fr auto;gap:8px 16px;margin:0;
+    align-items:baseline;max-width:340px}
+  .tally dt{font-size:13px;color:var(--dim);margin:0}
+  .tally .val{font-size:17px;font-weight:700;font-variant-numeric:tabular-nums;
+    color:var(--text);letter-spacing:.03em;margin:0}
+  .tally .val small{font-size:12px;font-weight:400;color:var(--dim);margin-left:2px}
+  .tally .gain{font-size:13.5px;font-weight:700;font-variant-numeric:tabular-nums;
+    color:var(--amber);text-shadow:0 0 10px rgba(242,180,92,.4);margin:0;justify-self:end}
+  .tally .gain:empty{text-shadow:none}
+  .tally .note{margin:10px 0 0;font-size:12px;color:var(--dim)}
+
+  .chips{display:flex;flex-wrap:wrap;gap:7px 13px}
+  .chip{display:flex;align-items:center;gap:6px;font-size:11.5px;color:#cdc2ae;
+    text-shadow:0 1px 1px rgba(0,0,0,.5)}
+  .chip i{width:14px;height:14px;border-radius:2px;display:block;
+    box-shadow:0 0 0 1px rgba(0,0,0,.7) inset, 0 0 9px -3px currentColor}
+
+  .doc{margin-top:28px;border-top:1px solid var(--rule);padding-top:6px}
+  .doc summary{cursor:pointer;list-style:none;padding:10px 0;font-size:13px;
+    font-weight:700;color:var(--dim);letter-spacing:.1em}
+  .doc summary::-webkit-details-marker{display:none}
+  .doc summary::before{content:"＋　";font-size:11px;opacity:.7}
+  .doc[open] summary::before{content:"−　"}
+  .doc summary:hover{color:var(--text)}
+  .doc summary:focus-visible{outline:2px solid var(--amber);outline-offset:3px}
+  .doc p b{color:var(--text);font-weight:700}
+  .doc p{font-size:13px;color:var(--dim);margin:12px 0 0;max-width:60ch}
+
+  .sol{margin-top:12px;font-size:13.5px;color:var(--dim);display:none}
+  .sol.open{display:block}
+  .sol ol{margin:6px 0 0;padding-left:1.4em}
+  .sol b{color:var(--text);font-weight:500}
+
+  @media (max-width:600px){
+    .deck{grid-template-columns:1fr}
+    .counts{justify-self:start;text-align:left;gap:28px}
+    button.undo{width:100%}
+    .bar{gap:6px}
+    .seg{flex:1}
+    .seg button{flex:1;padding:9px 6px;font-size:13px}
+  }
+  @media (prefers-reduced-motion:reduce){
+    *{transition:none !important}
+    button.cell:active{transform:none}
+    .stamp{animation:none}
+    .cell.pulse{animation:none}
+    .cell.wet,.cell.lift{animation:none}
+    .grid.done{animation:none}
+    .deck.spent{animation:none}
+  }

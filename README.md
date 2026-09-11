@@ -1,5 +1,7 @@
 # Ink Trio
 
+[![test](https://github.com/m-masaki72/ink-trio/actions/workflows/test.yml/badge.svg)](https://github.com/m-masaki72/ink-trio/actions/workflows/test.yml)
+
 三色のインクを重ねて、色校正と同じ配色をつくる 5×5 パズル。
 
 **▶ [ここで遊べます](https://m-masaki72.github.io/ink-trio/)**
@@ -18,7 +20,7 @@
 
 ## 置き方
 
-ビルドはありません。`index.html` と `src/` をそのまま置けば動きます。サーバー側の処理も不要です。
+ビルドはありません。`index.html` と `styles.css`、`src/` をそのまま置けば動きます。サーバー側の処理も不要です。
 
 - 静的ホスティング（GitHub Pages、Netlify、Cloudflare Pages など）にそのまま置く
 - 手元で見るときは簡易サーバを立ててください（`python3 -m http.server` など）。
@@ -28,7 +30,8 @@
 
 | ファイル | 役割 |
 |---|---|
-| `index.html` | 画面の構造とスタイル |
+| `index.html` | 画面の構造 |
+| `styles.css` | 見た目 |
 | `src/rules.js` | 盤と混色の規則、最短手数の算出 |
 | `src/puzzles.js` | 練習21面と出題の生成 |
 | `src/game.js` | 盤の進行（描画にも音にも触らない） |

@@ -4,8 +4,9 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## このリポジトリ
 
-静的パズルゲーム。ビルド工程も依存パッケージもない。`index.html` が画面の構造とスタイルを持ち、
-JS は `src/` の ES モジュールに分かれている。テストは Node 標準のランナーだけで動く。
+静的パズルゲーム。ビルド工程も依存パッケージもない。`index.html` は構造だけを持ち、
+見た目は `styles.css`、JS は `src/` の ES モジュールに分かれている。
+テストは Node 標準のランナーだけで動き、push と PR で GitHub Actions が回す。
 
 ```sh
 python3 -m http.server              # 手元で見る（file:// では動かない、後述）
@@ -67,7 +68,7 @@ export const DIM = (1 - 0.20 / 3) * (1 - 0.26);
 ```
 
 文字色は素の背景ではなく、ブラウン管表現のオーバーレイを通したあとの色で判定している。
-`0.20/3` は `index.html` の `.screen .grid::after`（3px周期に `rgba(0,0,0,.20)` が1px）、
+`0.20/3` は `styles.css` の `.screen .grid::after`（3px周期に `rgba(0,0,0,.20)` が1px）、
 `0.26` は `.screen .sheet::after` の落ち込み。**CSS 側を変えたら `DIM` も直す。**
 放置すると文字が背景に溶ける。`tests/palette.test.js` が AA を検査しているので、
 直し忘れればテストが落ちる。
@@ -110,3 +111,6 @@ UI にその旨を出しつつ遊びは続く。この分岐を消さない。
 - コメントは「コードから読み取れない理由」だけ。この密度を保つ
 - CSP を `index.html` の `<meta>` に置いている。`default-src 'none'` で外部送信を塞いでいるので、
   新しい読み込み先が要るときはここも開ける。`frame-ancestors` は meta では無視される
+- **`style-src` から `'unsafe-inline'` を外してあるので、マークアップに `style="..."` を書いても効かない。**
+  エラーは出ず静かに無視されるだけなので気づきにくい。見た目は必ず `styles.css` の規則で書く。
+  JS からの `el.style.x = ...` は CSSOM 操作なので CSP の対象外で、これまでどおり動く
