@@ -1,4 +1,5 @@
 <meta charset="utf-8">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; script-src 'unsafe-inline'; img-src 'self'; base-uri 'none'; form-action 'none'">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="description" content="Ink Trio ─ マゼンタ・イエロー・ブルーの三色を5×5の盤に重ね、お手本と同じ配色をつくるパズル。ライツアウトに混色を持ち込んだ遊びです。">
 <meta name="theme-color" content="#0a0910">
@@ -1215,7 +1216,7 @@
   (function boot(){
     var d = load();
     if (d){
-      reached = Math.min(d.reached|0, TUTORIAL.length-1);
+      reached = Math.min(Math.max(d.reached|0, 0), TUTORIAL.length-1);
       cleared = Array.isArray(d.cleared) ? d.cleared : [];
       tutorialDone = !!d.done;
       level = [3,6,10].indexOf(d.level) >= 0 ? d.level : 6;
