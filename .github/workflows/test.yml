@@ -6,7 +6,7 @@ on:
   pull_request:
 
 jobs:
-  test:
+  unit:
     runs-on: ubuntu-latest
     strategy:
       matrix:
@@ -16,5 +16,22 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: ${{ matrix.node }}
-      # 依存パッケージはないので install しない
+      # 単体テストは Node 標準のランナーだけで走るので install は要らない
       - run: npm test
+
+  e2e:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - run: npm ci
+      - run: npx playwright install --with-deps chromium firefox webkit
+      - run: npm run test:e2e
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: playwright-report
+          path: playwright-report/
+          retention-days: 7
