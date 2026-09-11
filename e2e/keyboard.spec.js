@@ -5,7 +5,7 @@ const focused = page => page.evaluate(() => document.activeElement?.dataset?.i ?
 
 test("矢印キーで盤上を移動し、盤の外へは出ない", async ({ page }) => {
   const game = await openGame(page, { reached: STAGE.総仕上げ });
-  await page.locator('.cell[data-i="0"]').focus();
+  await page.locator('#board .cell[data-i="0"]').focus();
 
   await page.keyboard.press("ArrowRight");
   expect(await focused(page)).toBe("1");
@@ -23,7 +23,7 @@ test("矢印キーで盤上を移動し、盤の外へは出ない", async ({ pa
 
 test("Enter と Space でインクを乗せられる", async ({ page }) => {
   const game = await openGame(page, { reached: STAGE.総仕上げ });
-  await page.locator('.cell[data-i="12"]').focus();
+  await page.locator('#board .cell[data-i="12"]').focus();
   await page.keyboard.press("Enter");
   await expect(remaining(page)).toHaveText("5");
   await page.keyboard.press(" ");
@@ -33,7 +33,7 @@ test("Enter と Space でインクを乗せられる", async ({ page }) => {
 
 test("Z と Backspace で一手もどせる", async ({ page }) => {
   const game = await openGame(page, { reached: STAGE.総仕上げ });
-  await page.locator('.cell[data-i="12"]').focus();
+  await page.locator('#board .cell[data-i="12"]').focus();
   await page.keyboard.press("Enter");
   await page.keyboard.press("Enter");
   await expect(remaining(page)).toHaveText("4");
@@ -63,7 +63,7 @@ test("Escape で自動遷移を止められる", async ({ page }) => {
 
 test("キーボードで辿った操作要素にフォーカスリングが出る", async ({ page }) => {
   const game = await openGame(page, { reached: STAGE.総仕上げ });
-  await page.locator('.cell[data-i="0"]').focus();
+  await page.locator('#board .cell[data-i="0"]').focus();
   await page.keyboard.press("ArrowRight");
   const ring = await page.evaluate(() => {
     const el = document.activeElement;

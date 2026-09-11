@@ -18,10 +18,23 @@ const el = {
   peek: $("peek"), count: $("count"), finish: $("finish"), chips: $("chips"),
   ink0: $("ink0"), inkRest: $("inkRest"), undoKey: $("undoKey"), opts: $("opts"),
   optPanel: $("optpanel"), tallyList: $("tallyList"), tallyNote: $("tallyNote"),
-  saveInfo: $("saveInfo"), wipe: $("wipe"), deck: document.querySelector(".deck"),
+  saveInfo: $("saveInfo"), wipe: $("wipe"), reroll: $("reroll"),
+  deck: document.querySelector(".deck"),
 };
 
 const AUTO_SECONDS = 3;
+
+// 右クリックのない端末に「右クリックで戻して」と言わない
+const coarse = matchMedia("(pointer: coarse)").matches;
+const TEXT = coarse ? {
+  hint: "左の色校正と同じ配色になれば完成です。マスをタップしてインクを乗せ、「一手もどす」で戻します。",
+  spent: "手数を使い切りました。「一手もどす」で戻してやり直してください。",
+  next: "　盤をタップすると次へ進みます。",
+} : {
+  hint: "左の色校正と同じ配色になれば完成です。左クリックでインクを乗せ、右クリックで一手戻します。",
+  spent: "手数を使い切りました。右クリックで戻してやり直してください。",
+  next: "　盤をクリックすると次へ進みます。",
+};
 
 const game = createGame();
 const audio = createAudio();
@@ -46,7 +59,7 @@ const proofCells = buildGrid(el.proof, { interactive: false });
 /* ---------- 描画 ---------- */
 
 function draw() {
-  const showDiff = el.diff.getAttribute("aria-pressed") === "true";
+  const showDiff = state.showDiff;
   for (let i = 0; i < cells.length; i++) {
     paintCell(cells[i], game.cellAt(i), {
       pal: pal(), markMode: state.markMode,
@@ -85,6 +98,7 @@ function start(cellSeq) {
   el.sol.classList.remove("open");
   el.count.textContent = "";
   el.deck.classList.remove("spent");
+  el.reroll.textContent = stage >= 0 ? "この面をやり直す" : "別の課題";
   renderSolution(el.sol, game.answer);
   renderChips(el.chips, pal());
   draw();
@@ -96,7 +110,7 @@ function newGame(level) {
   stage = -1;
   save();
   start(generateSequence(state.level));
-  setStatus("左の色校正と同じ配色になれば完成です。左クリックでインクを乗せ、右クリックで一手戻します。", false);
+  setStatus(TEXT.hint, false);
 }
 
 function loadStage(n) {
@@ -129,11 +143,11 @@ function onPress(idx) {
   const r = game.press(idx);
   if (r.type === BLOCKED) {
     audio.blocked();
-    if (state.soundOn && navigator.vibrate) navigator.vibrate(18);
+    if (navigator.vibrate) navigator.vibrate(18);
     el.deck.classList.remove("spent");
     void el.deck.offsetWidth;
     el.deck.classList.add("spent");
-    setStatus("手数を使い切りました。右クリックで戻してやり直してください。", false);
+    setStatus(TEXT.spent, false);
     return;
   }
   if (r.type !== PRESSED) return;
@@ -204,7 +218,7 @@ function celebrate() {
 function cancelAdvance() {
   if (!advanceTimer) return false;
   closeFinish();
-  setStatus(`${winMsg}　盤をクリックすると次へ進みます。`, true);
+  setStatus(winMsg + TEXT.next, true);
   return true;
 }
 
@@ -223,7 +237,7 @@ el.board.addEventListener("click", () => {
 el.board.addEventListener("contextmenu", e => {
   e.preventDefault();
   if (game.solved) {
-    if (!cancelAdvance()) setStatus(`${winMsg}　盤をクリックすると次へ進みます。`, true);
+    if (!cancelAdvance()) setStatus(winMsg + TEXT.next, true);
     return;
   }
   undo();
@@ -252,13 +266,24 @@ for (const ev of ["pointerup", "pointerleave", "pointercancel"]) {
   });
 }
 
-for (const [node, onToggle] of [[el.diff, draw], [el.peek, on => el.sol.classList.toggle("open", on)]]) {
-  node.addEventListener("click", () => {
-    const on = node.getAttribute("aria-pressed") !== "true";
-    node.setAttribute("aria-pressed", String(on));
-    onToggle(on);
-  });
-}
+el.diff.addEventListener("click", () => {
+  state = { ...state, showDiff: el.diff.getAttribute("aria-pressed") !== "true" };
+  el.diff.setAttribute("aria-pressed", String(state.showDiff));
+  draw();
+  save();
+});
+
+// 答えは課題ごとに閉じる。ずっと開けておくものではない
+el.peek.addEventListener("click", () => {
+  const on = el.peek.getAttribute("aria-pressed") !== "true";
+  el.peek.setAttribute("aria-pressed", String(on));
+  el.sol.classList.toggle("open", on);
+});
+
+el.reroll.addEventListener("click", () => {
+  if (stage >= 0) loadStage(stage);
+  else newGame();
+});
 
 function segWire(selector, apply) {
   const buttons = document.querySelectorAll(selector);
@@ -362,6 +387,7 @@ setSeg("data-crt", state.crtOn ? "on" : "off");
 setSeg("data-pal", state.palName);
 setSeg("data-mark", state.markMode);
 setSeg("data-snd", state.soundOn ? "on" : "off");
+el.diff.setAttribute("aria-pressed", String(state.showDiff));
 
 if (state.tutorialDone) {
   setSeg("data-k", state.level);

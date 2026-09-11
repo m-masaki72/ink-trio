@@ -37,7 +37,7 @@
             <path d="M-2 -2 h-8 M-2 -2 v-8" transform="translate(100%,100%)"/>
           </g>
         </svg>
-        <div class="grid proof" id="proof"></div>
+        <div class="grid proof" id="proof" role="group" aria-label="色校正 5×5　めざす配色"></div>
         <div class="finish" id="finish" hidden><div class="stamp">校了</div></div>
       </div>
       <h2>色校正<small>めざす配色</small></h2>
@@ -56,6 +56,11 @@
       <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 6 4 11l5 5M4 11h10a6 6 0 0 1 0 12h-3"/></svg>
       一手もどす
     </button>
+  </div>
+
+  <div class="statusline">
+    <p class="status" id="status" role="status">左の色校正と同じ配色になれば完成です。</p>
+    <p class="count" id="count" aria-hidden="true"></p>
   </div>
 
   <div class="controls">
@@ -81,6 +86,7 @@
       <button class="btn" data-k="6">ふつう</button>
       <button class="btn" data-k="10">むずかしい</button>
     </div>
+    <button class="btn" id="reroll">別の課題</button>
     <button class="btn" id="opts" aria-expanded="false" aria-controls="optpanel">表示設定</button>
   </div>
   </div>
@@ -89,11 +95,6 @@
       <span class="inkkey-label">インク表</span>
       <div class="chips" id="chips"></div>
     </div>
-  </div>
-
-  <div class="statusline">
-    <p class="status" id="status" role="status">左の色校正と同じ配色になれば完成です。</p>
-    <p class="count" id="count" aria-hidden="true"></p>
   </div>
 
   <div class="opts" id="optpanel" hidden>

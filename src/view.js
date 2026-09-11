@@ -6,13 +6,18 @@ import { MODES, clearedCount, gainedToday } from "./tally.js";
 
 const LETTERS = ["M", "Y", "B"];
 
+// 目印は opacity で見せ消ししている。display:none と違い要素は残るので、
+// 隠していても読み上げには届いてしまう。配合は aria-label で伝えるため、
+// 見た目のための M・Y・B と数字はツリーから外す。
 function buildInner(el) {
   const miss = document.createElement("div");
   miss.className = "miss";
+  miss.setAttribute("aria-hidden", "true");
   el.appendChild(miss);
 
   const tag = document.createElement("div");
   tag.className = "tag";
+  tag.setAttribute("aria-hidden", "true");
   for (const ch of LETTERS) {
     const sp = document.createElement("span");
     sp.textContent = ch;
@@ -22,21 +27,26 @@ function buildInner(el) {
 
   const num = document.createElement("div");
   num.className = "num";
+  num.setAttribute("aria-hidden", "true");
   el.appendChild(num);
 
   return { miss, tag, slots: tag.children, num };
 }
+
+const place = i => `${Math.floor(i / N) + 1}行${(i % N) + 1}列`;
 
 export function buildGrid(container, { interactive, onPress } = {}) {
   const cells = [];
   for (let i = 0; i < SZ; i++) {
     const el = document.createElement(interactive ? "button" : "div");
     el.className = "cell";
+    el.dataset.i = i;
     if (interactive) {
       el.type = "button";
-      el.dataset.i = i;
-      el.setAttribute("aria-label", `${Math.floor(i / N) + 1}行${(i % N) + 1}列`);
       el.addEventListener("click", () => onPress(i));
+    } else {
+      // 目標の盤は押せないが、配合は読めなければならない
+      el.setAttribute("role", "img");
     }
     el.parts = buildInner(el);
     container.appendChild(el);
@@ -52,6 +62,9 @@ export function paintCell(el, bits, { pal, markMode, showMiss }) {
   el.style.setProperty("--c", hex);
   el.classList.toggle("lit", bits !== 0);
   el.title = `${NAME[bits]}（${bits}）`;
+  // 位置だけでなく、いま何が乗っているかを名前に含める
+  el.setAttribute("aria-label",
+    `${place(Number(el.dataset.i))} ${NAME[bits]}${showMiss ? "　ずれている" : ""}`);
 
   const s = el.parts.slots;
   s[0].className = bits & M ? "on" : "";

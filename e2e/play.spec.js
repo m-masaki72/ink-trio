@@ -44,7 +44,7 @@ test("一手もどすと直前の盤面に戻る", async ({ page }) => {
 test("盤の上の右クリックでも戻せる（メニューは出さない）", async ({ page }) => {
   const game = await openGame(page, { reached: STAGE.三つの重なり });
   await press(page, 6);
-  await page.click('.cell[data-i="0"]', { button: "right" });
+  await page.click('#board .cell[data-i="0"]', { button: "right" });
   await expect(remaining(page)).toHaveText("3");
   await game.expectClean();
 });
@@ -54,7 +54,7 @@ test("白紙より先へは戻せない", async ({ page }) => {
   await press(page, 6);
   await page.click("#undoKey");
   await expect(page.locator("#undoKey")).toBeDisabled();
-  await page.click('.cell[data-i="0"]', { button: "right" });
+  await page.click('#board .cell[data-i="0"]', { button: "right" });
   await expect(status(page)).toContainText("これ以上は戻せません");
   await game.expectClean();
 });

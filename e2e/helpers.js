@@ -34,7 +34,7 @@ export async function openGame(page, overrides) {
   };
 }
 
-export const press = (page, i) => page.click(`.cell[data-i="${i}"]`);
+export const press = (page, i) => page.click(`#board .cell[data-i="${i}"]`);
 export const remaining = page => page.locator("#moves");
 export const par = page => page.locator("#par");
 export const status = page => page.locator("#status");

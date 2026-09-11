@@ -62,6 +62,13 @@ test("集計は素のオブジェクトだけ受け取る", () => {
   assert.equal(sanitize(full({ day: 20260911 }), OPTS).dayKey, "");
 });
 
+test("ズレ表示は既定がオフで、他の設定と同じく保存される", () => {
+  assert.equal(sanitize(full(), OPTS).showDiff, false);
+  assert.equal(sanitize(full({ diff: true }), OPTS).showDiff, true);
+  assert.equal(sanitize(full({ diff: "yes" }), OPTS).showDiff, false);
+  assert.equal(serialize(sanitize(full({ diff: true }), OPTS)).diff, true);
+});
+
 test("音と画面は既定がオン、明示的な false だけ効く", () => {
   assert.equal(sanitize(full({ snd: undefined }), OPTS).soundOn, true);
   assert.equal(sanitize(full({ snd: false }), OPTS).soundOn, false);
@@ -120,5 +127,5 @@ test("openBackend は使えない環境で null を返す", () => {
 
 test("serialize は保存する項目だけを書き出す", () => {
   const keys = Object.keys(serialize(sanitize(full(), OPTS))).sort();
-  assert.deepEqual(keys, ["cleared", "crt", "day", "done", "level", "marks", "pal", "reached", "snd", "today", "totals", "v"]);
+  assert.deepEqual(keys, ["cleared", "crt", "day", "diff", "done", "level", "marks", "pal", "reached", "snd", "today", "totals", "v"]);
 });

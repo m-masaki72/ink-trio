@@ -9,7 +9,7 @@ export const MARK_MODES = ["bars", "letters", "digits", "none"];
 
 export const DEFAULTS = {
   reached: 0, cleared: [], tutorialDone: false, level: 6,
-  markMode: "none", palName: "vivid", soundOn: true, crtOn: true,
+  markMode: "none", palName: "vivid", soundOn: true, crtOn: true, showDiff: false,
   totals: {}, today: {}, dayKey: "",
 };
 
@@ -29,6 +29,7 @@ export function sanitize(raw, { stageCount, paletteNames }) {
     palName: paletteNames.includes(d.pal) ? d.pal : DEFAULTS.palName,
     soundOn: d.snd !== false,
     crtOn: d.crt !== false,
+    showDiff: d.diff === true,
     totals: plainObject(d.totals),
     today: plainObject(d.today),
     dayKey: typeof d.day === "string" ? d.day : "",
@@ -40,7 +41,7 @@ export function serialize(s) {
     v: SAVE_VERSION,
     reached: s.reached, cleared: s.cleared, done: s.tutorialDone,
     level: s.level, marks: s.markMode, pal: s.palName,
-    snd: s.soundOn, crt: s.crtOn,
+    snd: s.soundOn, crt: s.crtOn, diff: s.showDiff,
     totals: s.totals, day: s.dayKey, today: s.today,
   };
 }
