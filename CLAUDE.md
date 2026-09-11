@@ -10,12 +10,15 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ```sh
 python3 -m http.server              # 手元で見る（file:// では動かない、後述）
-npm test                            # 全テスト
-node --test "tests/rules.test.js"   # 1ファイルだけ
+npm test                            # 単体。依存も install も不要
+npm run test:e2e                    # E2E（Chromium / Firefox / WebKit）
+npm run test:all                    # 両方
+node --test tests/rules.test.js     # 1ファイルだけ
 ```
 
-`package.json` に依存は書かれていない。`"type": "module"` は Node が `src/*.js` を
-ES モジュールとして読むために要るだけで、`npm install` は不要。
+**単体テストは依存ゼロで走る。** `"type": "module"` は Node が `src/*.js` を ES モジュールとして
+読むために要るだけ。E2E だけが Playwright を必要とするので、単体を走らせるのに `npm install` は要らない。
+CI も単体（Node 20/22/24）と E2E を別ジョブに分けてある。
 
 ## file:// では動かない
 
@@ -93,7 +96,8 @@ UI にその旨を出しつつ遊びは続く。この分岐を消さない。
 
 ## テストの方針
 
-純ロジックだけを `node --test` で検査する。描画と入力は対象外。
+`tests/` は純ロジックを `node --test` で、`e2e/` は実ブラウザでの振る舞いを Playwright で検査する。
+**層の境目は「ブラウザが要るか」**。盤の規則や保存値の検証は単体へ、描画・入力・CSP・保存の往復は E2E へ置く。
 
 意味のあるテストは「コードを読んでも分からない保証」を書いたもの。既存のものだと、
 練習21面すべてで `par === 手数`（崩れると答えの手順を押し切る前に手数制限へ当たる）、
@@ -102,6 +106,12 @@ UI にその旨を出しつつ遊びは続く。この分岐を消さない。
 
 **テストを書く前に、主張しようとしている前提を実測する。** 「イエロー単独の盤面は2手以上」と
 思い込んで書いたテストが落ち、実際は到達不能（`null`）だった、という例がある。
+
+E2E では `addInitScript` で保存値を仕込まない。**再読み込みのたびに再実行されて保存値を
+上書きしてしまい、「設定が保存されるか」を検証できなくなる。** `e2e/helpers.js` の `openGame()` は
+一度読み込んでから `evaluate` で書き、`reload()` する。ここを踏んで二度はまっている。
+
+出題はランダムなので、E2E は練習面（毎回同じ盤面）に固定して検証する。`STAGE` 定数がその入口。
 
 ## 書き方の約束
 

@@ -44,15 +44,22 @@
 
 ## テスト
 
-依存パッケージはありません。Node があればそのまま動きます。
+単体テストは Node 標準のランナーだけで走ります（依存なし）。E2E は実ブラウザで確かめます。
 
 ```sh
-npm test                            # すべて
-node --test "tests/rules.test.js"   # 1ファイルだけ
+npm test                             # 単体。依存も install も不要
+node --test tests/rules.test.js      # 1ファイルだけ
+
+npm ci && npx playwright install     # E2E の準備（初回だけ）
+npm run test:e2e                     # E2E（Chromium / Firefox / WebKit）
+npx playwright test e2e/play.spec.js # 1ファイルだけ
+npm run test:all                     # 両方
 ```
 
-盤の規則、最短手数の算出、出題の保証、保存値の検証、配色の不変条件、集計を検査します。
-描画と入力はブラウザでしか動かないため対象外です。
+| 層 | 検査するもの |
+|---|---|
+| 単体 `tests/` | 盤の規則、最短手数の算出、出題の保証、保存値の検証、配色の不変条件、集計 |
+| E2E `e2e/` | 遊びの流れ（押す・戻す・使い切り・校了・自動遷移）、表示設定と保存、キーボード操作、壊れた保存値、保存不可環境、CSP、モジュールの読み込み |
 
 ## 外部からの読み込み
 
