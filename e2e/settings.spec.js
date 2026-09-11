@@ -120,3 +120,65 @@ test("設定パネルは Escape で閉じる", async ({ page }) => {
   await expect(page.locator("#opts")).toHaveAttribute("aria-expanded", "false");
   await game.expectClean();
 });
+
+test("ズレを示すは、課題をまたいでも開き直しても残る", async ({ page }) => {
+  const game = await openGame(page, null);
+  await openSettings(page);
+  await page.click("#diff");
+  await expect(page.locator("#diff")).toHaveAttribute("aria-pressed", "true");
+
+  await page.reload();
+  await expect(page.locator("#diff")).toHaveAttribute("aria-pressed", "true", "他の設定と同じく保存される");
+  expect(await page.locator("#board .miss.show").count()).toBeGreaterThan(0, "描画にも反映される");
+
+  await page.click('.seg button[data-k="3"]');
+  await expect(page.locator("#diff")).toHaveAttribute("aria-pressed", "true", "課題を変えても消えない");
+  await game.expectClean();
+});
+
+test("別の課題ボタンは、いまの遊び方に合わせて振る舞う", async ({ page }) => {
+  const game = await openGame(page, { reached: STAGE.三つの重なり });
+  await expect(page.locator("#reroll")).toHaveText("この面をやり直す");
+
+  await press(page, 6);
+  await page.click("#reroll");
+  await expect(page.locator("#board .cell.lit")).toHaveCount(0, "同じ面を白紙からやり直す");
+  await expect(status(page)).toContainText("練習 11 / 21");
+
+  await page.click('.seg button[data-k="6"]');
+  await expect(page.locator("#reroll")).toHaveText("別の課題");
+  const 出題 = () => page.locator("#proof").getAttribute("aria-label")
+    .then(() => page.evaluate(() =>
+      [...document.querySelectorAll("#proof .cell")].map(c => c.getAttribute("aria-label")).join("|")));
+  const 前 = await 出題();
+  await page.click("#reroll");
+  expect(await 出題()).not.toBe(前, "別の盤面に差し替わる");
+  await game.expectClean();
+});
+
+test.describe("動きを減らす設定", () => {
+  test.use({ reducedMotion: "reduce" });
+
+  test("手数超過は、動かさずに明滅で伝える", async ({ page }) => {
+    const game = await openGame(page, { reached: STAGE.中心をひと押し });
+    await press(page, 0);                       // 揃わない手で使い切る
+    await press(page, 24);                      // 超過
+    await expect(page.locator(".deck")).toHaveClass(/spent/);
+    const anim = await page.locator(".deck").evaluate(e => getComputedStyle(e).animationName);
+    expect(anim, "nudge は動きなので使わない").toBe("blocked-flash");
+    await game.expectClean();
+  });
+});
+
+test.describe("動きを許す設定", () => {
+  test.use({ reducedMotion: "no-preference" });
+
+  test("既定では横に揺れて伝える", async ({ page }) => {
+    const game = await openGame(page, { reached: STAGE.中心をひと押し });
+    await press(page, 0);
+    await press(page, 24);
+    const anim = await page.locator(".deck").evaluate(e => getComputedStyle(e).animationName);
+    expect(anim).toBe("nudge");
+    await game.expectClean();
+  });
+});
