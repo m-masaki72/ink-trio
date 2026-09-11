@@ -193,6 +193,10 @@
     box-shadow:0 0 0 2px rgba(242,180,92,.35) inset}
   @keyframes nudge{0%,100%{transform:translateX(0)}25%{transform:translateX(-4px)}75%{transform:translateX(4px)}}
   .deck.spent{animation:nudge .18s ease-in-out}
+  /* 動かさずに伝える版。前庭障害に配慮しつつ、手応えを失わせない */
+  @keyframes blocked-flash{
+    0%,55%{box-shadow:0 0 0 2px var(--amber) inset, 0 2px 9px rgba(0,0,0,.7) inset}
+    100%{box-shadow:0 0 0 1px #000 inset, 0 2px 9px rgba(0,0,0,.7) inset, 0 1px 0 var(--shell-hi)}}
   .next-label{font-size:11.5px;color:var(--amber-dim);letter-spacing:.12em}
   .next-name{font-size:17px;font-weight:700;letter-spacing:.06em;color:var(--amber);
     text-shadow:0 0 12px rgba(242,180,92,.4)}
@@ -234,7 +238,7 @@
   #opts::after{content:"　＋";font-size:11px;opacity:.6}
   #opts[aria-expanded="true"]::after{content:"　−"}
 
-  .statusline{margin:20px 0 0;padding:2px 0 2px 14px;min-height:3em;
+  .statusline{margin:16px 0 14px;padding:2px 0 2px 14px;min-height:3em;
     border-left:2px solid var(--amber-dim)}
   .status{margin:0;font-size:15px;color:var(--text)}
   .status.win{color:var(--good);font-weight:700}
@@ -277,6 +281,16 @@
   .sol b{color:var(--text);font-weight:500}
 
   @media (max-width:600px){
+    /* 色校正は見るだけなので縮めてよい。押す刷り台は指のために大きさを保つ */
+    #proof{--cell:clamp(28px, calc((100vw - 96px) / 5 * .58), 40px)}
+    #proof{padding:3px;gap:3px}
+    .panel:first-child .sheet{padding:8px}
+    #proof .num{font-size:calc(var(--cell) * .52)}
+    .screens{gap:6px}
+    .panel h2{margin-top:5px;font-size:11px;letter-spacing:.16em}
+    .panel h2 small{font-size:10px}
+    .undobar{margin-top:10px}
+    .statusline{margin:12px 0 12px}
     .deck{grid-template-columns:1fr}
     .counts{justify-self:start;text-align:left;gap:28px}
     button.undo{width:100%}
@@ -291,5 +305,5 @@
     .cell.pulse{animation:none}
     .cell.wet,.cell.lift{animation:none}
     .grid.done{animation:none}
-    .deck.spent{animation:none}
+    .deck.spent{animation:blocked-flash .7s ease-out}
   }

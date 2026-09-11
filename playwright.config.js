@@ -27,7 +27,9 @@ export default defineConfig({
 
   projects: [
     { name: "chromium", use: { ...devices["Desktop Chrome"] } },
-    { name: "firefox", use: { ...devices["Desktop Firefox"] } },
-    { name: "webkit", use: { ...devices["Desktop Safari"] } },
+    // 端末の再現に使う isMobile / hasTouch は Chromium 専用なので、
+    // レイアウト検証は chromium だけに任せる
+    { name: "firefox", use: { ...devices["Desktop Firefox"] }, testIgnore: /layout\.spec\.js/ },
+    { name: "webkit", use: { ...devices["Desktop Safari"] }, testIgnore: /layout\.spec\.js/ },
   ],
 });
