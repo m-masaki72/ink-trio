@@ -83,9 +83,9 @@ test("モジュールと外部スタイルシートがすべて読み込まれ�
     .map(e => e.name.replace(location.origin + "/", ""))
     .filter(n => /^src\/|^styles\.css$/.test(n)).sort());
   expect(loaded).toEqual([
-    "src/audio.js", "src/game.js", "src/main.js", "src/palette.js",
-    "src/puzzles.js", "src/pwa.js", "src/rules.js", "src/storage.js",
-    "src/tally.js", "src/view.js", "styles.css",
+    "src/audio.js", "src/daily.js", "src/game.js", "src/main.js",
+    "src/palette.js", "src/puzzles.js", "src/pwa.js", "src/rules.js",
+    "src/share.js", "src/storage.js", "src/tally.js", "src/view.js", "styles.css",
   ]);
   await expect(page.locator("style")).toHaveCount(0, "インラインの style タグは残していない");
   await game.expectClean();

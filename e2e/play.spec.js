@@ -110,6 +110,7 @@ test("放っておくと次の課題へ自動で進む", async ({ page }) => {
 
 test("難易度を選ぶと、その手数ちょうどの課題が出る", async ({ page }) => {
   const game = await openGame(page, {});
+  await page.click('.tab[data-mode="free"]');   // 難易度は「自由」でだけ出す
   for (const [key, moves] of [["3", "3"], ["6", "6"], ["10", "10"]]) {
     await page.click(`.seg button[data-k="${key}"]`);
     await expect(par(page)).toHaveText(moves);

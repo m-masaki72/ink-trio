@@ -63,11 +63,14 @@ test("ズレを示すと、目標と違うマスに印が出る", async ({ page 
 test("答えを見ると手順が並び、次の課題では閉じる", async ({ page }) => {
   const game = await openGame(page, { reached: STAGE.三つの重なり });
   await openSettings(page);
+  // 答えを最初から DOM に置くと、押さずに開発者ツールで読めてしまう
+  await expect(page.locator("#sol li")).toHaveCount(0, "押すまで手順を書き出さない");
   await page.click("#peek");
   await expect(page.locator("#sol")).toBeVisible();
   await expect(page.locator("#sol li")).toHaveCount(3);
   await expect(page.locator("#sol li").first()).toHaveText(/行.*列.*マゼンタ/);
 
+  await page.click('.tab[data-mode="free"]');   // 難易度は「自由」でだけ出す
   await page.click('.seg button[data-k="3"]');
   await expect(page.locator("#peek")).toHaveAttribute("aria-pressed", "false");
   await expect(page.locator("#sol")).toBeHidden();
@@ -131,6 +134,7 @@ test("ズレを示すは、課題をまたいでも開き直しても残る", as
   await expect(page.locator("#diff")).toHaveAttribute("aria-pressed", "true", "他の設定と同じく保存される");
   expect(await page.locator("#board .miss.show").count()).toBeGreaterThan(0, "描画にも反映される");
 
+  await page.click('.tab[data-mode="free"]');   // 難易度は「自由」でだけ出す
   await page.click('.seg button[data-k="3"]');
   await expect(page.locator("#diff")).toHaveAttribute("aria-pressed", "true", "課題を変えても消えない");
   await game.expectClean();
@@ -145,6 +149,7 @@ test("別の課題ボタンは、いまの遊び方に合わせて振る舞う",
   await expect(page.locator("#board .cell.lit")).toHaveCount(0, "同じ面を白紙からやり直す");
   await expect(status(page)).toContainText("練習 11 / 21");
 
+  await page.click('.tab[data-mode="free"]');   // 難易度は「自由」でだけ出す
   await page.click('.seg button[data-k="6"]');
   await expect(page.locator("#reroll")).toHaveText("別の課題");
   const 出題 = () => page.locator("#proof").getAttribute("aria-label")

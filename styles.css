@@ -65,6 +65,40 @@
   .panel h2 small{font-size:10.5px;font-weight:400;letter-spacing:.06em;color:#cdc2ae;
     text-shadow:none}
 
+  /* ---------- 遊び方のタブ ---------- */
+  /* 盤より上に置く。下に足すと縦に伸びて、日刊に気づかれない */
+  .tabs{display:flex;gap:3px;margin:0 0 14px}
+  button.tab{font:inherit;font-size:13px;font-weight:700;letter-spacing:.08em;
+    color:#cdc2ae;cursor:pointer;border:0;padding:9px 18px;border-radius:3px 3px 0 0;
+    background:linear-gradient(180deg,#413c35 0%,#332f29 100%);
+    box-shadow:0 -1px 0 rgba(255,255,255,.10) inset, 0 2px 4px rgba(0,0,0,.4)}
+  button.tab[aria-selected="true"]{color:var(--amber);
+    background:linear-gradient(180deg,#565048 0%,#4a453d 100%);
+    text-shadow:0 0 10px rgba(242,180,92,.45);
+    box-shadow:0 1px 0 rgba(255,255,255,.16) inset}
+  button.tab:focus-visible{outline:2px solid var(--amber);outline-offset:2px}
+  @media (hover:hover){
+    button.tab:hover{color:var(--text)}
+  }
+
+  .issuebar{display:flex;align-items:center;gap:10px;flex-wrap:wrap;
+    margin:0 0 14px;padding:10px 14px;border-radius:4px;background:#17150f;
+    box-shadow:0 0 0 1px #000 inset, 0 2px 9px rgba(0,0,0,.7) inset, 0 1px 0 var(--shell-hi)}
+  .issuebar[hidden]{display:none}
+  .issue-name{display:flex;align-items:baseline;gap:10px;flex:1;justify-content:center}
+  .issue-name strong{font-size:17px;font-weight:700;letter-spacing:.06em;color:var(--amber);
+    text-shadow:0 0 12px rgba(242,180,92,.4)}
+  .issue-name span{font-size:12.5px;color:var(--amber-dim);letter-spacing:.1em;
+    font-variant-numeric:tabular-nums}
+  .issue-clock{font-size:14px;color:var(--amber);font-variant-numeric:tabular-nums;
+    letter-spacing:.04em;min-width:5.5em;text-align:right}
+  button.btn.tiny{font-size:12px;padding:6px 11px}
+
+  .share{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin:14px 0 0}
+  .share[hidden]{display:none}
+  a.btn{text-decoration:none;display:inline-block}
+  .share-note{font-size:12.5px;color:var(--good)}
+
   /* ---------- 画面窓 ---------- */
   .sheet{position:relative;padding:13px;border-radius:5px;background:var(--glass);
     box-shadow:
@@ -230,6 +264,8 @@
     box-shadow:0 2px 5px rgba(0,0,0,.6) inset, 0 0 0 1px #000 inset}
   button.btn:disabled{opacity:.4;cursor:not-allowed}
   .seg{display:flex;gap:2px}
+  /* hidden 属性はブラウザ既定の display:none。作者が display を書くと負ける */
+  .seg[hidden]{display:none}
 
   /* ---------- インク表（筐体に刷られた参照） ---------- */
   .inkkey{margin-top:16px;padding-top:14px;display:flex;align-items:center;

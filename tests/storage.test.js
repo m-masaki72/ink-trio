@@ -1,7 +1,8 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import {
-  SAVE_KEY, SAVE_VERSION, DEFAULTS, LEVELS, MARK_MODES,
+  SAVE_KEY, SAVE_VERSION, KNOWN_VERSIONS, DEFAULTS, LEVELS, MARK_MODES,
+  MAX_SETS, MAX_MS, freshDaily,
   sanitize, serialize, openBackend, createSaveFile,
 } from "../src/storage.js";
 
@@ -37,8 +38,19 @@ test("到達面数は下限も上限も枠に収める", () => {
 });
 
 test("知らない版と壊れた値は既定に落とす", () => {
-  for (const raw of [null, undefined, {}, { v: 3 }, { v: "2" }, [], 42, "x"]) {
-    assert.deepEqual(sanitize(raw, OPTS), { ...DEFAULTS, cleared: [], totals: {}, today: {} });
+  for (const raw of [null, undefined, {}, { v: 9 }, { v: "2" }, [], 42, "x"]) {
+    assert.deepEqual(sanitize(raw, OPTS),
+      { ...DEFAULTS, cleared: [], totals: {}, today: {}, daily: freshDaily() });
+  }
+});
+
+// 版を上げたときに古い保存を弾くと、遊んでいた人の進行度がその場で消える
+test("前の版の保存を読んでも進行度は消えない", () => {
+  for (const v of KNOWN_VERSIONS) {
+    const out = sanitize({ ...full({ reached: 7, done: true }), v }, OPTS);
+    assert.equal(out.reached, 7, `v${v} の到達面`);
+    assert.equal(out.tutorialDone, true, `v${v} の練習済み`);
+    assert.deepEqual(out.daily, freshDaily(), `v${v} には日刊が無い`);
   }
 });
 
@@ -127,5 +139,80 @@ test("openBackend は使えない環境で null を返す", () => {
 
 test("serialize は保存する項目だけを書き出す", () => {
   const keys = Object.keys(serialize(sanitize(full(), OPTS))).sort();
-  assert.deepEqual(keys, ["cleared", "crt", "day", "diff", "done", "level", "marks", "pal", "reached", "snd", "today", "totals", "v"]);
+  assert.deepEqual(keys, ["cleared", "crt", "daily", "day", "diff", "done", "level", "marks", "pal", "reached", "snd", "today", "totals", "v"]);
+});
+
+/* ---------- 日刊（v3）---------- */
+
+const withDaily = daily => full({ daily });
+const 一組 = extra => ({ ms: [1000, 2000, 3000, 4000, 5000], undo: [0, 1, 0, 0, 2],
+  aid: false, seq: [[1], [2, 3], [4, 5], [6], [7]], ...extra });
+
+test("送信は既定でオフ、時計の表示は既定でオン", () => {
+  const d = sanitize(withDaily({}), OPTS).daily;
+  assert.equal(d.send, false);
+  assert.equal(d.clock, true);
+});
+
+// ここを真っぽい値で通すと、同意していない人の記録が外へ出る
+test("送信は真偽値でしかオンにならない", () => {
+  for (const v of ["yes", 1, {}, [], "true"]) {
+    assert.equal(sanitize(withDaily({ send: v }), OPTS).daily.send, false, String(v));
+  }
+  assert.equal(sanitize(withDaily({ send: true }), OPTS).daily.send, true);
+});
+
+test("号でないキーは捨てる", () => {
+  const sets = { "123": 一組(), "0": 一組(), "-1": 一組(), "1.5": 一組(),
+    "abc": 一組(), "12345678": 一組(), "__proto__": 一組() };
+  const out = sanitize(withDaily({ sets }), OPTS).daily.sets;
+  assert.deepEqual(Object.keys(out), ["123"]);
+});
+
+test("形の壊れた号は、その号ごと無かったことにする", () => {
+  const sets = {
+    "1": 一組(),
+    "2": 一組({ seq: null }),                    // 手順がない
+    "3": 一組({ seq: [[1], [2]] }),              // 問数が合わない
+    "4": 一組({ ms: [] }),                       // 空
+    "5": { },                                    // 何もない
+  };
+  const out = sanitize(withDaily({ sets }), OPTS).daily.sets;
+  assert.deepEqual(Object.keys(out), ["1"]);
+});
+
+// あとでサーバーへ出して検証してもらう値なので、盤の外を混ぜてはいけない
+test("盤の外のマス番号は盤に収める", () => {
+  const sets = { "1": 一組({ seq: [[99], [-5], [1.9], [NaN], ["x"]] }) };
+  const out = sanitize(withDaily({ sets }), OPTS, ).daily.sets["1"];
+  assert.deepEqual(out.seq, [[24], [0], [1], [0], [0]]);
+});
+
+test("桁の大きすぎる所要時間は上限で止める", () => {
+  const out = sanitize(withDaily({ sets: { "1": 一組({ ms: [1e15, -1, 0, 0, 0] }) } }), OPTS)
+    .daily.sets["1"];
+  assert.equal(out.ms[0], MAX_MS);
+  assert.equal(out.ms[1], 0);
+});
+
+test("手戻りの数が欠けていても零で埋める", () => {
+  const out = sanitize(withDaily({ sets: { "1": 一組({ undo: undefined }) } }), OPTS)
+    .daily.sets["1"];
+  assert.deepEqual(out.undo, [0, 0, 0, 0, 0]);
+});
+
+// 同一オリジンの別ページから保存領域を埋められないようにする
+test("号の件数には上限がある", () => {
+  const sets = {};
+  for (let i = 1; i <= MAX_SETS + 50; i++) sets[String(i)] = 一組();
+  const out = sanitize(withDaily({ sets }), OPTS).daily.sets;
+  assert.equal(Object.keys(out).length, MAX_SETS);
+});
+
+test("日刊は書いて読み戻しても変わらない", () => {
+  const daily = { days: 12, lastDay: "2026-09-14", clock: false, send: true,
+    sets: { "257": 一組() } };
+  const once = sanitize(withDaily(daily), OPTS);
+  const twice = sanitize({ ...serialize(once), v: SAVE_VERSION }, OPTS);
+  assert.deepEqual(twice.daily, once.daily);
 });

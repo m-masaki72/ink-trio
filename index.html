@@ -31,6 +31,19 @@
       <h1>Ink&#8202;Trio</h1>
       <p>三色のインクを重ねて、色校正と同じ絵にする</p>
     </div>
+  <div class="tabs" role="tablist" aria-label="遊び方">
+    <button class="tab" data-mode="daily" role="tab" aria-selected="false">日刊</button>
+    <button class="tab" data-mode="tutorial" role="tab" aria-selected="false">練習</button>
+    <button class="tab" data-mode="free" role="tab" aria-selected="false">自由</button>
+  </div>
+
+  <div class="issuebar" id="issuebar" hidden>
+    <button class="btn tiny" id="issuePrev">前の号</button>
+    <div class="issue-name"><strong id="issueNo">—</strong><span id="issueStep"></span></div>
+    <button class="btn tiny" id="issueNext">次の号</button>
+    <span class="issue-clock" id="issueClock" aria-hidden="true"></span>
+  </div>
+
   <div class="screens">
     <section class="panel">
       <div class="sheet">
@@ -63,6 +76,12 @@
     </button>
   </div>
 
+  <div class="share" id="shareRow" hidden>
+    <button class="btn" id="shareCopy">結果を写す</button>
+    <a class="btn" id="shareX" target="_blank" rel="noopener noreferrer">X に出す</a>
+    <span class="share-note" id="shareNote" role="status"></span>
+  </div>
+
   <div class="statusline">
     <p class="status" id="status" role="status">左の色校正と同じ配色になれば完成です。</p>
     <p class="count" id="count" aria-hidden="true"></p>
@@ -85,8 +104,7 @@
   </div>
 
   <div class="bar">
-    <div class="seg" role="group" aria-label="難易度">
-      <button class="btn" data-k="t">練習</button>
+    <div class="seg" id="levels" role="group" aria-label="難易度">
       <button class="btn" data-k="3">やさしい</button>
       <button class="btn" data-k="6">ふつう</button>
       <button class="btn" data-k="10">むずかしい</button>

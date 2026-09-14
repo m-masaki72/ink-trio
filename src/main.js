@@ -5,6 +5,9 @@ import { openBackend, createSaveFile } from "./storage.js";
 import { TUTORIAL, generateSequence } from "./puzzles.js";
 import { createGame, PRESSED, BLOCKED, UNDONE } from "./game.js";
 import { createAudio } from "./audio.js";
+import { SZ, MAX_MOVES } from "./rules.js";
+import { SHAPE, issueOf, issueSet } from "./daily.js";
+import { boardText, shareText, formatDuration } from "./share.js";
 import { registerServiceWorker } from "./pwa.js";
 import { dayKeyOf, rollDay, recordClear } from "./tally.js";
 import {
@@ -20,7 +23,11 @@ const el = {
   ink0: $("ink0"), inkRest: $("inkRest"), undoKey: $("undoKey"), opts: $("opts"),
   optPanel: $("optpanel"), tallyList: $("tallyList"), tallyNote: $("tallyNote"),
   saveInfo: $("saveInfo"), wipe: $("wipe"), reroll: $("reroll"),
-  deck: document.querySelector(".deck"),
+  deck: document.querySelector(".deck"), levels: $("levels"),
+  issuebar: $("issuebar"), issueNo: $("issueNo"), issueStep: $("issueStep"),
+  issueClock: $("issueClock"), issuePrev: $("issuePrev"), issueNext: $("issueNext"),
+  shareRow: $("shareRow"), shareCopy: $("shareCopy"), shareX: $("shareX"),
+  shareNote: $("shareNote"),
 };
 
 const AUTO_SECONDS = 3;
@@ -42,6 +49,8 @@ const audio = createAudio();
 const saveFile = createSaveFile(openBackend(), {
   stageCount: TUTORIAL.length,
   paletteNames: PALETTE_NAMES,
+  cellCount: SZ,
+  maxMoves: MAX_MOVES,
 });
 
 let state = saveFile.load();
@@ -49,6 +58,15 @@ let stage = -1;          // -1 ならランダム出題、0以上なら練習の
 let winMsg = "";
 let solvedAt = 0;
 let advanceTimer = null;
+let usedAid = false;      // この課題で補助を使ったか
+let playMode = "free";    // "daily" | "tutorial" | "free"
+let issue = 0;            // いま開いている号
+let slot = 0;             // 号のなかの何問目
+let issueBoards = [];
+let pressedAt = 0;        // 最初の一手の時刻。盤を読む時間は計らない
+let undoCount = 0;
+let pressedCells = [];
+let clockTimer = null;
 let tickTimer = null;
 
 const pal = () => PAL[state.palName];
@@ -91,16 +109,139 @@ function showTally() {
   });
 }
 
+/* ---------- 日刊 ---------- */
+
+const todayIssue = () => issueOf(dayKeyOf());
+const keyOf = n => String(n);
+const blankRecord = () => ({
+  ms: SHAPE.map(() => 0), undo: SHAPE.map(() => 0), seq: SHAPE.map(() => []), aid: false,
+});
+
+const recordOf = n => state.daily.sets[keyOf(n)] || blankRecord();
+const solvedCount = rec => rec.ms.filter(v => v > 0).length;
+
+function paintTabs() {
+  for (const b of document.querySelectorAll(".tab")) {
+    b.setAttribute("aria-selected", String(b.dataset.mode === playMode));
+  }
+  el.levels.hidden = playMode !== "free";
+}
+
+function drawClock() {
+  if (playMode !== "daily" || !state.daily.clock) { el.issueClock.textContent = ""; return; }
+  el.issueClock.textContent = pressedAt ? formatDuration(performance.now() - pressedAt) : "0.0秒";
+}
+function stopClock() { clearInterval(clockTimer); clockTimer = null; }
+function startClock() {
+  stopClock();
+  if (playMode === "daily") clockTimer = setInterval(drawClock, 100);
+}
+
+function drawIssueBar() {
+  el.issuebar.hidden = playMode !== "daily";
+  if (playMode !== "daily") { stopClock(); return; }
+  el.issueNo.textContent = `第${issue}号`;
+  el.issueStep.textContent = `${slot + 1} / ${SHAPE.length}問目　済 ${solvedCount(recordOf(issue))}`;
+  el.issuePrev.disabled = issue <= 1;
+  el.issueNext.disabled = issue >= (todayIssue() || 1);
+  drawClock();
+}
+
+// 号の記録は五問ぶんの枠を先に持つ。0 は「まだ解いていない」
+function recordSlot(ms) {
+  const prev = recordOf(issue);
+  const rec = {
+    ms: prev.ms.slice(), undo: prev.undo.slice(), seq: prev.seq.map(a => a.slice()),
+    aid: prev.aid || usedAid,
+  };
+  rec.ms[slot] = Math.max(1, Math.round(ms));
+  rec.undo[slot] = undoCount;
+  rec.seq[slot] = pressedCells.slice();
+
+  let { days, lastDay } = state.daily;
+  const today = dayKeyOf();
+  // 「刷った日」は五問そろえた日だけ。過去号を埋めても今日は増えない
+  if (solvedCount(rec) >= SHAPE.length && issue === todayIssue() && lastDay !== today) {
+    days++;
+    lastDay = today;
+  }
+  state = { ...state, daily: { ...state.daily, days, lastDay,
+    sets: { ...state.daily.sets, [keyOf(issue)]: rec } } };
+  save();
+  return rec;
+}
+
+function loadDailySlot(n) {
+  closeFinish();
+  stage = -1;
+  slot = Math.min(Math.max(n, 0), SHAPE.length - 1);
+  const here = issueBoards[slot];
+  start(here.seq);
+  setStatus(`第${issue}号 ${slot + 1}問目（${here.level}手）。${TEXT.hint}`, false);
+  startClock();
+}
+
+function openIssue(n) {
+  issue = Math.min(Math.max(n, 1), todayIssue() || 1);
+  issueBoards = issueSet(issue);
+  const next = recordOf(issue).ms.findIndex(v => v === 0);
+  loadDailySlot(next < 0 ? 0 : next);
+}
+
+function showShare(rec) {
+  const text = shareText({
+    issue,
+    solved: solvedCount(rec),
+    total: SHAPE.length,
+    ms: rec.ms.reduce((a, b) => a + b, 0),
+    board: boardText(issueBoards[SHAPE.length - 1].seq),
+  });
+  el.shareRow.hidden = false;
+  el.shareX.href = `https://x.com/intent/post?text=${encodeURIComponent(text)}`;
+  el.shareCopy.onclick = async () => {
+    try {
+      await navigator.clipboard.writeText(text);
+      el.shareNote.textContent = "写しました";
+    } catch {
+      el.shareNote.textContent = "写せませんでした";
+    }
+  };
+}
+
+function setMode(m) {
+  playMode = m;
+  paintTabs();
+  stopClock();
+  if (m === "daily") {
+    if (!todayIssue()) { setStatus("日刊はまだ始まっていません。", false); return; }
+    openIssue(issue || todayIssue());
+  } else if (m === "tutorial") {
+    loadStage(stage >= 0 ? stage : state.reached);
+  } else {
+    newGame(state.level);
+  }
+}
+
 /* ---------- 出題 ---------- */
 
 function start(cellSeq) {
   game.load(cellSeq);
+  pressedAt = 0;
+  undoCount = 0;
+  pressedCells = [];
   el.peek.setAttribute("aria-pressed", "false");
   el.sol.classList.remove("open");
+  // 答えを最初から DOM に置くと、押さなくても開発者ツールで読めてしまう。
+  // 完全には守れないが、覗くのに一手間かかる状態にはできる
+  el.sol.replaceChildren();
+  usedAid = state.showDiff;
   el.count.textContent = "";
   el.deck.classList.remove("spent");
   el.reroll.textContent = stage >= 0 ? "この面をやり直す" : "別の課題";
-  renderSolution(el.sol, game.answer);
+  el.reroll.hidden = playMode === "daily";
+  el.shareRow.hidden = true;
+  el.shareNote.textContent = "";
+  drawIssueBar();
   renderChips(el.chips, pal());
   draw();
 }
@@ -127,12 +268,19 @@ function loadStage(n) {
 function endTutorial() {
   state = { ...state, tutorialDone: true };
   save();
+  playMode = "free";
+  paintTabs();
   setSeg("data-k", "6");
   newGame(6);
   setStatus("練習はここまでです。ここからは毎回ちがう課題が出ます。", false);
 }
 
 function goNext() {
+  if (playMode === "daily") {
+    const next = recordOf(issue).ms.findIndex(v => v === 0);
+    if (next < 0) return drawIssueBar();      // 五問そろっている。勝手に進めない
+    return loadDailySlot(next);
+  }
   if (stage < 0) return newGame();
   if (stage + 1 < TUTORIAL.length) loadStage(stage + 1);
   else endTutorial();
@@ -153,6 +301,10 @@ function onPress(idx) {
   }
   if (r.type !== PRESSED) return;
 
+  // 盤を読む時間は計らない。読み上げで把握する人が一方的に不利になる
+  if (pressedAt === 0) pressedAt = performance.now();
+  pressedCells.push(idx);
+
   audio.ink(r.bit, 0);
   flashAround(cells, idx, "wet");
   if (r.solved) onSolved();
@@ -160,17 +312,29 @@ function onPress(idx) {
 }
 
 function onSolved() {
-  const mode = stage >= 0 ? "t" : String(state.level);
+  const modeKey = playMode === "daily" ? String(issueBoards[slot].level)
+    : stage >= 0 ? "t" : String(state.level);
   if (stage >= 0) {
     const cleared = state.cleared.slice();
     cleared[stage] = true;
     state = { ...state, cleared };
   }
-  state = recordClear(rollDay(state, dayKeyOf()), mode);
+  state = recordClear(rollDay(state, dayKeyOf()), modeKey);
   save();
   showTally();
 
-  winMsg = `刷り上がりました。最短の${game.moves}手です。`;
+  if (playMode === "daily") {
+    stopClock();
+    const rec = recordSlot(pressedAt ? performance.now() - pressedAt : 0);
+    const done = solvedCount(rec);
+    winMsg = done >= SHAPE.length
+      ? `第${issue}号を刷り上げました。五問で${formatDuration(rec.ms.reduce((a, b) => a + b, 0))}です。`
+      : `${slot + 1}問目、刷り上がりました。${formatDuration(rec.ms[slot])}。`;
+    if (done >= SHAPE.length) showShare(rec);
+    drawIssueBar();
+  } else {
+    winMsg = `刷り上がりました。最短の${game.moves}手です。`;
+  }
   solvedAt = Date.now();
   setStatus(winMsg, true);
   celebrate();
@@ -182,6 +346,8 @@ function undo() {
     setStatus("これ以上は戻せません。白紙の状態です。", false);
     return false;
   }
+  undoCount++;
+  pressedCells.pop();
   audio.peel();
   flashAround(cells, r.idx, "lift");
   draw();
@@ -224,6 +390,12 @@ function cancelAdvance() {
 }
 
 /* ---------- 入力の配線 ---------- */
+
+for (const b of document.querySelectorAll(".tab")) {
+  b.addEventListener("click", () => setMode(b.dataset.mode));
+}
+el.issuePrev.addEventListener("click", () => openIssue(issue - 1));
+el.issueNext.addEventListener("click", () => openIssue(issue + 1));
 
 el.finish.addEventListener("click", cancelAdvance);
 
@@ -270,6 +442,7 @@ for (const ev of ["pointerup", "pointerleave", "pointercancel"]) {
 el.diff.addEventListener("click", () => {
   state = { ...state, showDiff: el.diff.getAttribute("aria-pressed") !== "true" };
   el.diff.setAttribute("aria-pressed", String(state.showDiff));
+  if (state.showDiff) usedAid = true;
   draw();
   save();
 });
@@ -278,6 +451,10 @@ el.diff.addEventListener("click", () => {
 el.peek.addEventListener("click", () => {
   const on = el.peek.getAttribute("aria-pressed") !== "true";
   el.peek.setAttribute("aria-pressed", String(on));
+  if (on) {
+    if (!el.sol.hasChildNodes()) renderSolution(el.sol, game.answer);
+    usedAid = true;
+  }
   el.sol.classList.toggle("open", on);
 });
 
@@ -341,7 +518,9 @@ el.wipe.addEventListener("click", () => {
   state = saveFile.load();
   showSaveInfo();
   showTally();
-  setSeg("data-k", "t");
+  playMode = "tutorial";
+  paintTabs();
+  issue = 0;
   loadStage(0);
   setStatus("記録を消しました。練習の1面目からやり直します。", false);
 });
@@ -390,11 +569,12 @@ setSeg("data-mark", state.markMode);
 setSeg("data-snd", state.soundOn ? "on" : "off");
 el.diff.setAttribute("aria-pressed", String(state.showDiff));
 
+playMode = state.tutorialDone ? "free" : "tutorial";
+paintTabs();
 if (state.tutorialDone) {
   setSeg("data-k", state.level);
   newGame(state.level);
 } else {
-  setSeg("data-k", "t");
   loadStage(state.reached);
 }
 showSaveInfo();
