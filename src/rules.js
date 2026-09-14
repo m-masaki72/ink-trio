@@ -34,6 +34,13 @@ export const MASK = (() => {
   return mask;
 })();
 
+// 押したマスの列から盤面を組む。n手目に乗る色は SEQ で固定されていて選べない
+export function targetOf(cellSeq) {
+  const target = new Array(SZ).fill(0);
+  cellSeq.forEach((idx, j) => stamp(target, idx, SEQ[j % 3]));
+  return target;
+}
+
 export function stamp(state, idx, bit) {
   const r = Math.floor(idx / N), c = idx % N;
   for (let dr = -1; dr <= 1; dr++) {

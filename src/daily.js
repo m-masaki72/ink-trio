@@ -1,21 +1,12 @@
-// 日刊号。号番号だけから出題が決まる。DOM にも保存にも触らない。
-// ここの定数を変えると過去号が別の盤面に化けるので、tests/daily.test.js が
-// 代表号を固定して見張っている。
+// 日刊号。号番号だけから出題が決まり、号の記録の勘定もここで閉じる。
+// DOM にも保存にも触らない。
+// EPOCH / SHAPE / 種の混ぜ方を変えると過去号が別の盤面に化けるので、
+// tests/daily.test.js が代表号を実値で固定して見張っている。
 
-import { SZ, SEQ, stamp } from "./rules.js";
-import { generateSequence } from "./puzzles.js";
+import { BANDS, pickInBand } from "./puzzles.js";
 
 export const EPOCH = "2026-01-01";        // 第1号の日
 export const SHAPE = [3, 6, 6, 10, 10];   // 1日の型。入りは軽く、後半で歯ごたえ
-
-// 同じ手数でも盤の見た目は揃わない（6手で「乗ったマス数」が2〜25まで散る）。
-// 帯を外れた盤面は捨てて種をずらす。実測では平均0.2回ずらせば収まる。
-export const BANDS = {
-  3: { inked: [10, 20], colors: [3, 6] },
-  6: { inked: [15, 23], colors: [4, 7] },
-  10: { inked: [17, 24], colors: [5, 7] },
-};
-export const MAX_SHIFT = 50;
 
 const DAY = 86400000;
 
@@ -43,29 +34,41 @@ export function seeded(seed) {
 const seedFor = (issue, slot, shift) =>
   (issue * 1000003 + slot * 10007 + shift * 97) >>> 0;
 
-export function featuresOf(cellSeq) {
-  const target = new Array(SZ).fill(0);
-  cellSeq.forEach((idx, j) => stamp(target, idx, SEQ[j % 3]));
-  const on = target.filter(v => v !== 0);
-  return { inked: on.length, colors: new Set(on).size };
-}
+export const puzzleOf = (issue, slot, level, bands = BANDS) =>
+  pickInBand(level, k => seeded(seedFor(issue, slot, k)), bands);
 
-const withinBand = (f, b) =>
-  f.inked >= b.inked[0] && f.inked <= b.inked[1] &&
-  f.colors >= b.colors[0] && f.colors <= b.colors[1];
+export const issueSet = (issue, shape = SHAPE) =>
+  shape.map((level, slot) => ({ level, seq: puzzleOf(issue, slot, level) }));
 
-// 帯に入るまで種をずらす。入りきらなくても出題は止めない
-export function puzzleOf(issue, slot, level, bands = BANDS) {
-  const band = bands[level];
-  let first = null;
-  for (let shift = 0; shift < MAX_SHIFT; shift++) {
-    const seq = generateSequence(level, seeded(seedFor(issue, slot, shift)));
-    if (first === null) first = seq;
-    if (!band || withinBand(featuresOf(seq), band)) return seq;
+/* ---------- 号の記録 ---------- */
+// 五問ぶんの枠を先に持つ。0 は「まだ解いていない」
+
+export const blankRecord = (shape = SHAPE) => ({
+  ms: shape.map(() => 0), undo: shape.map(() => 0), seq: shape.map(() => []), aid: false,
+});
+
+export const solvedCount = rec => rec.ms.filter(v => v > 0).length;
+export const totalMs = rec => rec.ms.reduce((a, b) => a + b, 0);
+export const nextSlot = rec => rec.ms.findIndex(v => v === 0);
+export const isComplete = (rec, shape = SHAPE) => nextSlot(rec) < 0 && rec.ms.length === shape.length;
+
+export function mergeSlot(rec, { slot, ms, undo, seq, aid }) {
+  const out = {
+    ms: rec.ms.slice(), undo: rec.undo.slice(),
+    seq: rec.seq.map(a => a.slice()), aid: rec.aid || !!aid,
+  };
+  const now = Math.max(1, Math.round(ms));
+  // 済んだ枠をもう一度解いたときは、良くなったときだけ入れ替える
+  if (out.ms[slot] === 0 || now < out.ms[slot]) {
+    out.ms[slot] = now;
+    out.undo[slot] = undo;
+    out.seq[slot] = seq.slice();
   }
-  return first;
+  return out;
 }
 
-export function issueSet(issue, shape = SHAPE) {
-  return shape.map((level, slot) => ({ level, seq: puzzleOf(issue, slot, level) }));
+// 「刷った日」は五問そろえた日だけ。過去号を埋めても今日は増えない
+export function bumpDays(daily, { rec, issue, todayIssue, today, shape = SHAPE }) {
+  if (!isComplete(rec, shape) || issue !== todayIssue || daily.lastDay === today) return daily;
+  return { ...daily, days: daily.days + 1, lastDay: today };
 }

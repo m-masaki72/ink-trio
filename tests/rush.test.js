@@ -1,9 +1,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import {
-  RUSH_LEVEL, RUSH_MS, inBand, pickPuzzle, createRun, better,
-} from "../src/rush.js";
-import { buildPuzzle } from "../src/puzzles.js";
+import { RUSH_LEVEL, RUSH_MS, pickPuzzle, createRun, better } from "../src/rush.js";
+import { buildPuzzle, inBand } from "../src/puzzles.js";
 
 // 時計を手で進める。実時間に頼るとテストが遅くも脆くもなる
 function 時計(start = 0) {

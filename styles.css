@@ -84,7 +84,6 @@
   .issuebar{display:flex;align-items:center;gap:10px;flex-wrap:wrap;
     margin:0 0 14px;padding:10px 14px;border-radius:4px;background:#17150f;
     box-shadow:0 0 0 1px #000 inset, 0 2px 9px rgba(0,0,0,.7) inset, 0 1px 0 var(--shell-hi)}
-  .issuebar[hidden]{display:none}
   .issue-name{display:flex;align-items:baseline;gap:10px;flex:1;justify-content:center}
   .issue-name strong{font-size:17px;font-weight:700;letter-spacing:.06em;color:var(--amber);
     text-shadow:0 0 12px rgba(242,180,92,.4)}
@@ -94,8 +93,7 @@
     letter-spacing:.04em;min-width:5.5em;text-align:right}
   button.btn.tiny{font-size:12px;padding:6px 11px}
 
-  .share{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin:14px 0 0}
-  .share[hidden]{display:none}
+  .share{margin:14px 0 0}
   a.btn{text-decoration:none;display:inline-block}
   .share-note{font-size:12.5px;color:var(--good)}
 
@@ -175,7 +173,6 @@
   .finish{position:absolute;inset:0;z-index:6;border-radius:5px;cursor:pointer;
     display:flex;align-items:center;justify-content:center;
     background:rgba(6,8,10,.42)}
-  .finish[hidden]{display:none}
   .stamp{--s:clamp(92px,24vw,124px);width:var(--s);height:var(--s);border-radius:50%;
     border:4px solid #ff5a4d;color:#ff5a4d;display:flex;align-items:center;justify-content:center;
     font-size:calc(var(--s) * .3);font-weight:900;letter-spacing:.14em;
@@ -264,8 +261,6 @@
     box-shadow:0 2px 5px rgba(0,0,0,.6) inset, 0 0 0 1px #000 inset}
   button.btn:disabled{opacity:.4;cursor:not-allowed}
   .seg{display:flex;gap:2px}
-  /* hidden 属性はブラウザ既定の display:none。作者が display を書くと負ける */
-  .seg[hidden]{display:none}
 
   /* ---------- インク表（筐体に刷られた参照） ---------- */
   .inkkey{margin-top:16px;padding-top:14px;display:flex;align-items:center;
@@ -277,7 +272,6 @@
   /* ---------- 設定 ---------- */
   .opts{border:1px solid var(--rule);border-radius:4px;background:var(--press-2);
     padding:14px 16px;margin:12px 0 0;display:grid;gap:12px}
-  .opts[hidden]{display:none}
   .opt-row{display:flex;align-items:center;gap:12px;flex-wrap:wrap}
   .opt-row > span{font-size:12.5px;color:var(--dim);min-width:3.2em}
   #saveInfo{min-width:auto}
@@ -328,6 +322,11 @@
   .sol ol{margin:6px 0 0;padding-left:1.4em}
   .sol b{color:var(--text);font-weight:500}
 
+  /* hidden 属性はブラウザ既定の display:none で優先度が最低。
+     作者が display を書いた要素は、これを添えないと消えない */
+  .finish[hidden], .opts[hidden], .seg[hidden], .issuebar[hidden], .share[hidden],
+  .sol[hidden]{display:none}
+
   @media (max-width:600px){
     /* 色校正は見るだけなので縮めてよい。押す刷り台は指のために大きさを保つ */
     #proof{--cell:clamp(28px, calc((100vw - 96px) / 5 * .58), 40px)}
@@ -339,6 +338,11 @@
     .panel h2 small{font-size:10px}
     .undobar{margin-top:10px}
     .statusline{margin:12px 0 12px}
+    /* 狭い画面では号の名前を一行占有させる。flex:1 のままだと文字単位で折り返す */
+    .issuebar{gap:8px}
+    .issue-name{flex-basis:100%;order:-1;justify-content:flex-start;flex-wrap:wrap}
+    .issue-name strong{font-size:15.5px}
+    .issue-clock{margin-left:auto;min-width:auto}
     .deck{grid-template-columns:1fr}
     .counts{justify-self:start;text-align:left;gap:28px}
     button.undo{width:100%}

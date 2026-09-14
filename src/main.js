@@ -6,8 +6,10 @@ import { TUTORIAL, generateSequence } from "./puzzles.js";
 import { createGame, PRESSED, BLOCKED, UNDONE } from "./game.js";
 import { createAudio } from "./audio.js";
 import { SZ, MAX_MOVES } from "./rules.js";
-import { SHAPE, issueOf, issueSet } from "./daily.js";
-import { boardText, shareText, formatDuration } from "./share.js";
+import {
+  SHAPE, issueOf, issueSet, blankRecord, solvedCount, totalMs, nextSlot, mergeSlot, bumpDays,
+} from "./daily.js";
+import { boardText, shareText, formatDuration, clockText } from "./share.js";
 import { RUSH_MS, RUNS_PER_DAY, createRun, better } from "./rush.js";
 import { registerServiceWorker } from "./pwa.js";
 import { dayKeyOf, rollDay, recordClear } from "./tally.js";
@@ -60,7 +62,7 @@ const saveFile = createSaveFile(openBackend(), {
 });
 
 let state = saveFile.load();
-let stage = -1;          // -1 ならランダム出題、0以上なら練習の面番号
+let stage = 0;           // 練習の何面目か。どのモードかは playMode が持つ
 let winMsg = "";
 let solvedAt = 0;
 let advanceTimer = null;
@@ -70,8 +72,6 @@ let issue = 0;            // いま開いている号
 let slot = 0;             // 号のなかの何問目
 let issueBoards = [];
 let pressedAt = 0;        // 最初の一手の時刻。盤を読む時間は計らない
-let undoCount = 0;
-let pressedCells = [];
 let clockTimer = null;
 let run = null;           // いまの走行
 let rushTimer = null;
@@ -124,19 +124,7 @@ function showTally() {
 
 const todayIssue = () => issueOf(dayKeyOf());
 const keyOf = n => String(n);
-const blankRecord = () => ({
-  ms: SHAPE.map(() => 0), undo: SHAPE.map(() => 0), seq: SHAPE.map(() => []), aid: false,
-});
-
 const recordOf = n => state.daily.sets[keyOf(n)] || blankRecord();
-const solvedCount = rec => rec.ms.filter(v => v > 0).length;
-
-function paintTabs() {
-  for (const b of document.querySelectorAll(".tab")) {
-    b.setAttribute("aria-pressed", String(b.dataset.mode === playMode));
-  }
-  el.levels.hidden = playMode !== "free";
-}
 
 function drawClock() {
   if (playMode !== "daily" || !state.daily.clock) { el.issueClock.textContent = ""; return; }
@@ -150,7 +138,7 @@ function startClock() {
 
 function drawIssueBar() {
   el.issuebar.hidden = playMode !== "daily";
-  if (playMode !== "daily") { stopClock(); return; }
+  if (playMode !== "daily") return;
   el.issueNo.textContent = `第${issue}号`;
   el.issueStep.textContent = `${slot + 1} / ${SHAPE.length}問目　済 ${solvedCount(recordOf(issue))}`;
   el.issuePrev.disabled = issue <= 1;
@@ -158,49 +146,32 @@ function drawIssueBar() {
   drawClock();
 }
 
-// 号の記録は五問ぶんの枠を先に持つ。0 は「まだ解いていない」
 function recordSlot(ms) {
-  const prev = recordOf(issue);
-  const rec = {
-    ms: prev.ms.slice(), undo: prev.undo.slice(), seq: prev.seq.map(a => a.slice()),
-    aid: prev.aid || usedAid,
-  };
-  const 今回 = Math.max(1, Math.round(ms));
-  // 済んだ枠をもう一度解いたときは、良くなったときだけ入れ替える
-  if (prev.ms[slot] === 0 || 今回 < prev.ms[slot]) {
-    rec.ms[slot] = 今回;
-    rec.undo[slot] = undoCount;
-    rec.seq[slot] = pressedCells.slice();
-  }
-
-  let { days, lastDay } = state.daily;
-  const today = dayKeyOf();
-  // 「刷った日」は五問そろえた日だけ。過去号を埋めても今日は増えない
-  if (solvedCount(rec) >= SHAPE.length && issue === todayIssue() && lastDay !== today) {
-    days++;
-    lastDay = today;
-  }
-  state = { ...state, daily: { ...state.daily, days, lastDay,
-    sets: { ...state.daily.sets, [keyOf(issue)]: rec } } };
+  const rec = mergeSlot(recordOf(issue), {
+    slot, ms, undo: game.undos, seq: game.pressed, aid: usedAid,
+  });
+  const daily = bumpDays(state.daily, {
+    rec, issue, todayIssue: todayIssue(), today: dayKeyOf(),
+  });
+  state = { ...state,
+    daily: { ...daily, sets: { ...daily.sets, [keyOf(issue)]: rec } } };
   save();
   return rec;
 }
 
 function loadDailySlot(n) {
   closeFinish();
-  stage = -1;
   slot = Math.min(Math.max(n, 0), SHAPE.length - 1);
   const here = issueBoards[slot];
   start(here.seq);
   setStatus(`第${issue}号 ${slot + 1}問目（${here.level}手）。${TEXT.hint}`, false);
-  startClock();
 }
 
 function openIssue(n) {
   issue = Math.min(Math.max(n, 1), todayIssue() || 1);
   issueBoards = issueSet(issue);
   const rec = recordOf(issue);
-  const next = rec.ms.findIndex(v => v === 0);
+  const next = nextSlot(rec);
   loadDailySlot(next < 0 ? 0 : next);
   if (next < 0) showShare(rec);        // 済んだ号は結果をもう一度写せる
 }
@@ -226,19 +197,17 @@ function showShare(rec) {
 }
 
 function setMode(m) {
-  const 前 = playMode;
+  const from = playMode;
   // 走行中に同じタブを押しても取り替えない。無料の引き直しになってしまう
-  if (m === "rush" && 前 === "rush" && run && run.running) return;
+  if (m === "rush" && from === "rush" && run && run.running) return;
   // 起点より前の日付では号が無い。モードを移さずに知らせる
   if (m === "daily" && !todayIssue()) {
     setStatus("日刊はまだ始まっていません。端末の日付をご確認くださいませ。", false);
     return;
   }
-  if (前 === "rush" && m !== "rush") stopRush();
+  if (from === "rush" && m !== "rush") stopRush();
 
   playMode = m;
-  paintTabs();
-  stopClock();
   el.shareRow.hidden = true;        // 日刊の結果をほかのタブへ持ち出さない
 
   if (m === "rush") {
@@ -253,18 +222,13 @@ function setMode(m) {
   if (m === "daily") {
     openIssue(issue || todayIssue());
   } else if (m === "tutorial") {
-    loadStage(stage >= 0 ? stage : state.reached);
+    loadStage(stage);
   } else {
     newGame(state.level);
   }
 }
 
 /* ---------- 時間走 ---------- */
-
-const 分秒 = ms => {
-  const t = Math.ceil(ms / 1000);
-  return `${Math.floor(t / 60)}:${String(t % 60).padStart(2, "0")}`;
-};
 
 // 日付が変わったら今日の走行回数を戻す。通算のベストには手を触れない
 function rollRushDay() {
@@ -275,23 +239,41 @@ function rollRushDay() {
 
 function stopRushClock() { clearInterval(rushTimer); rushTimer = null; }
 
-function drawRushBar() {
-  el.rushbar.hidden = playMode !== "rush";
-  if (playMode !== "rush") { stopRushClock(); return; }
-  const 走行中 = !!(run && run.running);
-  el.rushLeft.textContent = 分秒(走行中 ? run.remaining() : RUSH_MS);
-  el.rushCount.textContent = run ? `${run.solved}問` : "";
-  el.rushPass.hidden = !走行中;
-  el.rushQuit.hidden = !走行中;
-  el.rushStart.hidden = 走行中;
-  el.rushStart.textContent = run ? "もう一度走る" : "走る";
-  el.rushReview.hidden = 走行中 || review.length === 0;
-  const 残り = Math.max(0, RUNS_PER_DAY - state.rush.count);
-  const ベスト = state.rush.best ? `　自己最高 ${state.rush.best.solved}問` : "";
-  el.rushNote.textContent = (残り > 0 ? `記録に残せる走行 あと${残り}回` : "練習走行") + ベスト;
+// 走行中に動くのは残り時間だけ。9箇所を10回/秒で書き換えると、
+// role="status" の #rushNote が同じ内容を読み上げ続ける
+function tickRush() {
+  if (!run) return;
+  if (!run.running) return endRush();
+  const left = clockText(run.remaining());
+  if (left !== el.rushLeft.textContent) el.rushLeft.textContent = left;
 }
 
-function drawBars() { drawIssueBar(); drawRushBar(); }
+function drawRushBar() {
+  el.rushbar.hidden = playMode !== "rush";
+  if (playMode !== "rush") return;
+  const running = !!(run && run.running);
+  el.rushLeft.textContent = clockText(running ? run.remaining() : RUSH_MS);
+  el.rushCount.textContent = run ? `${run.solved}問` : "";
+  el.rushPass.hidden = !running;
+  el.rushQuit.hidden = !running;
+  el.rushStart.hidden = running;
+  el.rushStart.textContent = run ? "もう一度走る" : "走る";
+  el.rushReview.hidden = running || review.length === 0;
+  const rest = Math.max(0, RUNS_PER_DAY - state.rush.count);
+  const best = state.rush.best ? `　自己最高 ${state.rush.best.solved}問` : "";
+  const note = (rest > 0 ? `記録に残せる走行 あと${rest}回` : "練習走行") + best;
+  if (note !== el.rushNote.textContent) el.rushNote.textContent = note;
+}
+
+// 表示の切替はここ一箇所。モードを足すたびに複数の関数を触らないため
+function drawBars() {
+  setSeg("data-mode", playMode);
+  el.levels.hidden = playMode !== "free";
+  if (playMode !== "daily") stopClock();
+  if (playMode !== "rush") stopRushClock();
+  drawIssueBar();
+  drawRushBar();
+}
 
 function nextRushBoard(seq) {
   if (!seq) return endRush();
@@ -304,24 +286,19 @@ function startRush() {
   review = [];
   run = createRun({ now: () => performance.now() });
   const seq = run.start();
-  stage = -1;
   closeFinish();
   start(seq);
   setStatus(`時間走。${RUSH_MS / 60000}分で何問さばけるか。行き詰まったら「パス」で次へ。`, false);
   stopRushClock();
-  rushTimer = setInterval(() => {
-    if (!run) return;
-    if (run.running) drawRushBar();
-    else endRush();
-  }, 100);
+  rushTimer = setInterval(tickRush, 250);
   drawBars();
 }
 
 function advanceRush() {
   audio.done();
-  const 数 = run.solved + 1;
+  const count = run.solved + 1;
   nextRushBoard(run.solve());
-  if (run.running) setStatus(`時間走 ${数}問。次の盤です。`, false);
+  if (run.running) setStatus(`時間走 ${count}問。次の盤です。`, false);
 }
 
 function endRush() {
@@ -333,19 +310,19 @@ function endRush() {
 
   rollRushDay();
   const r = state.rush;
-  const 記録する = r.count < RUNS_PER_DAY;
+  const counts = r.count < RUNS_PER_DAY;
   const score = { solved: res.solved, ms: res.ms };
   state = { ...state, rush: {
     ...r,
-    count: 記録する ? r.count + 1 : r.count,
-    today: 記録する && better(score, r.today) ? score : r.today,
-    best: 記録する && better(score, r.best) ? score : r.best,
+    count: counts ? r.count + 1 : r.count,
+    today: counts && better(score, r.today) ? score : r.today,
+    best: counts && better(score, r.best) ? score : r.best,
   } };
   save();
   showTally();
 
   setStatus(`時間走 おわり。${res.solved}問`
-    + (記録する ? `（${formatDuration(res.ms)}）。` : "。記録には残しません（練習走行）。")
+    + (counts ? `（${formatDuration(res.ms)}）。` : "。記録には残しません（練習走行）。")
     + (review.length ? `　パスした${review.length}問を見直せます。` : ""), true);
   drawBars();
 }
@@ -358,7 +335,6 @@ function stopRush() {
 function showReview() {
   const seq = review.shift();
   if (!seq) return drawBars();
-  stage = -1;
   closeFinish();
   start(seq);
   setStatus(`見直し。パスした盤です。「表示設定 → 答えを見る」で手順が出ます。残り${review.length}問。`, false);
@@ -370,8 +346,6 @@ function showReview() {
 function start(cellSeq) {
   game.load(cellSeq);
   pressedAt = 0;
-  undoCount = 0;
-  pressedCells = [];
   el.peek.setAttribute("aria-pressed", "false");
   el.sol.classList.remove("open");
   // 答えを最初から DOM に置くと、押さなくても開発者ツールで読めてしまう。
@@ -380,7 +354,7 @@ function start(cellSeq) {
   usedAid = state.showDiff;
   el.count.textContent = "";
   el.deck.classList.remove("spent");
-  el.reroll.textContent = stage >= 0 ? "この面をやり直す" : "別の課題";
+  el.reroll.textContent = playMode === "tutorial" ? "この面をやり直す" : "別の課題";
   el.reroll.hidden = playMode === "daily" || playMode === "rush";
   el.shareRow.hidden = true;
   el.shareNote.textContent = "";
@@ -392,7 +366,6 @@ function start(cellSeq) {
 function newGame(level) {
   if (level) state = { ...state, level };
   closeFinish();
-  stage = -1;
   save();
   start(generateSequence(state.level));
   setStatus(TEXT.hint, false);
@@ -412,7 +385,6 @@ function endTutorial() {
   state = { ...state, tutorialDone: true };
   save();
   playMode = "free";
-  paintTabs();
   setSeg("data-k", "6");
   newGame(6);
   setStatus("練習はここまでです。ここからは毎回ちがう課題が出ます。", false);
@@ -422,11 +394,11 @@ function goNext() {
   // 走行の外（見直し）で自由出題へ落とすと、時間走のまま迷子になる
   if (playMode === "rush") return drawBars();
   if (playMode === "daily") {
-    const next = recordOf(issue).ms.findIndex(v => v === 0);
+    const next = nextSlot(recordOf(issue));
     // 済んだ号は順にめくれる。「過去の号はいつでも遊べる」という約束のため
     return loadDailySlot(next < 0 ? (slot + 1) % SHAPE.length : next);
   }
-  if (stage < 0) return newGame();
+  if (playMode !== "tutorial") return newGame();
   if (stage + 1 < TUTORIAL.length) loadStage(stage + 1);
   else endTutorial();
 }
@@ -446,9 +418,9 @@ function onPress(idx) {
   }
   if (r.type !== PRESSED) return;
 
-  // 盤を読む時間は計らない。読み上げで把握する人が一方的に不利になる
-  if (pressedAt === 0) pressedAt = performance.now();
-  pressedCells.push(idx);
+  // 盤を読む時間は計らない。読み上げで把握する人が一方的に不利になる。
+  // 時計も一手目で動かしはじめる（眺めている間に空回りさせない）
+  if (pressedAt === 0) { pressedAt = performance.now(); startClock(); }
 
   audio.ink(r.bit, 0);
   flashAround(cells, idx, "wet");
@@ -462,8 +434,8 @@ function onPress(idx) {
 
 function onSolved() {
   const modeKey = playMode === "daily" ? String(issueBoards[slot].level)
-    : stage >= 0 ? "t" : String(state.level);
-  if (stage >= 0) {
+    : playMode === "tutorial" ? "t" : String(state.level);
+  if (playMode === "tutorial") {
     const cleared = state.cleared.slice();
     cleared[stage] = true;
     state = { ...state, cleared };
@@ -472,22 +444,22 @@ function onSolved() {
   state = playMode === "rush"
     ? rollDay(state, dayKeyOf())
     : recordClear(rollDay(state, dayKeyOf()), modeKey);
-  save();
-  showTally();
 
   if (playMode === "daily") {
     stopClock();
+    // recordSlot が保存する。ここで先に保存すると 64KB の同期書き込みが二度走る
     const rec = recordSlot(pressedAt ? performance.now() - pressedAt : 0);
     const done = solvedCount(rec);
     winMsg = done >= SHAPE.length
-      ? `第${issue}号を刷り上げました。五問で${formatDuration(rec.ms.reduce((a, b) => a + b, 0))}です。`
+      ? `第${issue}号を刷り上げました。五問で${formatDuration(totalMs(rec))}です。`
       : `${slot + 1}問目、刷り上がりました。${formatDuration(rec.ms[slot])}。`;
     if (done >= SHAPE.length) showShare(rec);
-    showTally();          // 刷った日数は recordSlot のあとでないと増えていない
     drawBars();
   } else {
+    save();
     winMsg = `刷り上がりました。最短の${game.moves}手です。`;
   }
+  showTally();
   solvedAt = Date.now();
   setStatus(winMsg, true);
   celebrate();
@@ -499,8 +471,6 @@ function undo() {
     setStatus("これ以上は戻せません。白紙の状態です。", false);
     return false;
   }
-  undoCount++;
-  pressedCells.pop();
   audio.peel();
   flashAround(cells, r.idx, "lift");
   draw();
@@ -528,7 +498,7 @@ function celebrate() {
   el.finish.hidden = false;
 
   let left = AUTO_SECONDS;
-  const dest = stage >= 0 && stage + 1 < TUTORIAL.length ? "次の練習" : "次の課題";
+  const dest = playMode === "tutorial" && stage + 1 < TUTORIAL.length ? "次の練習" : "次の課題";
   const tick = () => { el.count.textContent = `${left}秒後に${dest}へ（クリックで中断）`; };
   tick();
   tickTimer = setInterval(() => { left--; if (left > 0) tick(); }, 1000);
@@ -617,7 +587,7 @@ el.peek.addEventListener("click", () => {
 });
 
 el.reroll.addEventListener("click", () => {
-  if (stage >= 0) loadStage(stage);
+  if (playMode === "tutorial") loadStage(stage);
   else newGame();
 });
 
@@ -674,7 +644,6 @@ el.wipe.addEventListener("click", () => {
   showSaveInfo();
   showTally();
   playMode = "tutorial";
-  paintTabs();
   issue = 0;
   loadStage(0);
   setStatus("記録を消しました。練習の1面目からやり直します。", false);
@@ -725,7 +694,7 @@ setSeg("data-snd", state.soundOn ? "on" : "off");
 el.diff.setAttribute("aria-pressed", String(state.showDiff));
 
 playMode = state.tutorialDone ? "free" : "tutorial";
-paintTabs();
+stage = state.reached;
 if (state.tutorialDone) {
   setSeg("data-k", state.level);
   newGame(state.level);

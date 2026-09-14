@@ -1,14 +1,13 @@
 // 共有テキストの組み立て。DOM にもクリップボードにも触らない。
 
-import { N, SZ, SEQ, stamp } from "./rules.js";
+import { N, targetOf } from "./rules.js";
 
 export const HOME = "https://m-masaki72.github.io/ink-trio/";
 
 // 色に頼らない遊びなので、共有も色絵文字ではなく、この作品自身の数字表記を使う。
 // マゼンタ1・イエロー2・ブルー4 の合計（0〜7）。目標は最初から見えているので答えは割れない。
 export function boardText(cellSeq) {
-  const target = new Array(SZ).fill(0);
-  cellSeq.forEach((idx, j) => stamp(target, idx, SEQ[j % 3]));
+  const target = targetOf(cellSeq);
   const rows = [];
   for (let r = 0; r < N; r++) rows.push(target.slice(r * N, (r + 1) * N).join(""));
   return rows.join("\n");
@@ -22,6 +21,12 @@ export function formatDuration(ms) {
   if (tenths < 600) return `${(tenths / 10).toFixed(1)}秒`;
   const total = Math.round(ms / 1000);
   return `${Math.floor(total / 60)}分${String(total % 60).padStart(2, "0")}秒`;
+}
+
+// 残り時間は分と秒で出す。経過を出す formatDuration とは別の見せ方
+export function clockText(ms) {
+  const t = Math.max(0, Math.ceil(ms / 1000));
+  return `${Math.floor(t / 60)}:${String(t % 60).padStart(2, "0")}`;
 }
 
 export function shareText({

@@ -1,7 +1,7 @@
 // 出題。押すマスの列だけで盤面も手順も決まる（色は順番から自動で決まる）ので、
 // 面の定義はマス番号の配列ひとつで足りる。
 
-import { SZ, SEQ, stamp, trueMinimum } from "./rules.js";
+import { SZ, SEQ, stamp, targetOf, trueMinimum } from "./rules.js";
 
 export const TUTORIAL = [
   { t: "中心をひと押し", h: "盤の中心をひとつ押すだけ。周りの8マスにも同時にインクが乗ります。", s: [12] },
@@ -37,13 +37,48 @@ export const FALLBACK = {
 export const GENERATE_ATTEMPTS = 400;
 
 export function buildPuzzle(cellSeq) {
-  const target = new Array(SZ).fill(0);
-  cellSeq.forEach((idx, j) => stamp(target, idx, SEQ[j % 3]));
+  const target = targetOf(cellSeq);
   return {
     target,
     answer: cellSeq.map((idx, j) => ({ i: idx, bit: SEQ[j % 3] })),
     par: trueMinimum(target),
   };
+}
+
+// 同じ手数でも盤の見た目は揃わない（6手で「乗ったマス数」が2〜25まで散る）。
+// 帯を外れた盤面は捨てて引き直す。実測では平均0.2回で収まる。
+// この表を変えると過去の日刊号が別の盤面に化けるので、tests/daily.test.js が
+// 代表号を実値で固定して見張っている。
+export const BANDS = {
+  3: { inked: [10, 20], colors: [3, 6] },
+  6: { inked: [15, 23], colors: [4, 7] },
+  10: { inked: [17, 24], colors: [5, 7] },
+};
+export const MAX_SHIFT = 50;
+
+export function featuresOf(cellSeq) {
+  const on = targetOf(cellSeq).filter(v => v !== 0);
+  return { inked: on.length, colors: new Set(on).size };
+}
+
+export function inBand(cellSeq, level, bands = BANDS) {
+  const b = bands[level];
+  if (!b) return true;
+  const f = featuresOf(cellSeq);
+  return f.inked >= b.inked[0] && f.inked <= b.inked[1]
+    && f.colors >= b.colors[0] && f.colors <= b.colors[1];
+}
+
+// 帯に入るまで引き直す。入りきらなくても出題は止めない。
+// randomAt(k) が k 回目の乱数を返す（日刊は種つき、時間走は素の乱数）
+export function pickInBand(level, randomAt, bands = BANDS, tries = MAX_SHIFT) {
+  let first = null;
+  for (let k = 0; k < tries; k++) {
+    const seq = generateSequence(level, randomAt(k));
+    if (first === null) first = seq;
+    if (inBand(seq, level, bands)) return seq;
+  }
+  return first;
 }
 
 // 最短手数がちょうど level になる問題が出るまで引き直す。

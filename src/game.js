@@ -17,6 +17,7 @@ export function createGame() {
   let moves = 0;
   let history = [];
   let solved = false;
+  let undoCount = 0;
 
   const cap = () => (par === null ? Infinity : par);
   const remaining = () => (par === null ? Infinity : Math.max(0, par - moves));
@@ -33,6 +34,7 @@ export function createGame() {
       moves = 0;
       history = [];
       solved = false;
+      undoCount = 0;
     },
     press(idx) {
       if (solved) return { type: IGNORED };
@@ -47,10 +49,14 @@ export function createGame() {
     undo() {
       if (solved || history.length === 0) return { type: EMPTY };
       const h = history.pop();
+      undoCount++;
       board = h.board;
       moves = h.moves;
       return { type: UNDONE, idx: h.i };
     },
+    // 押した列は history が既に持っている。外で数え直すと同期漏れが起きる
+    get pressed() { return history.map(h => h.i); },
+    get undos() { return undoCount; },
     cellAt: i => board[i],
     targetAt: i => target[i],
     mismatched: i => board[i] !== target[i],

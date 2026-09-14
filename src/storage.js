@@ -17,6 +17,11 @@ export const MARK_MODES = ["bars", "letters", "digits", "none"];
 export const freshDaily = () => ({ days: 0, lastDay: "", clock: true, send: false, sets: {} });
 export const freshRush = () => ({ day: "", count: 0, today: null, best: null });
 
+// DEFAULTS の可変フィールドを呼び出し側で並べ直すと、項目を足すたび同期義務が増える
+export const freshState = () => ({
+  ...DEFAULTS, cleared: [], totals: {}, today: {}, daily: freshDaily(), rush: freshRush(),
+});
+
 export const DEFAULTS = {
   reached: 0, cleared: [], tutorialDone: false, level: 6,
   markMode: "none", palName: "vivid", soundOn: true, crtOn: true, showDiff: false,
@@ -100,8 +105,7 @@ function sanitizeDaily(raw, cellCount, maxMoves, slotCount) {
 export function sanitize(raw,
   { stageCount, paletteNames, cellCount = 25, maxMoves = 40, slotCount = 5 }) {
   const d = raw && KNOWN_VERSIONS.includes(raw.v) ? raw : null;
-  if (!d) return { ...DEFAULTS, cleared: [], totals: {}, today: {},
-    daily: freshDaily(), rush: freshRush() };
+  if (!d) return freshState();
   return {
     reached: clamp(d.reached | 0, 0, stageCount - 1),
     cleared: Array.isArray(d.cleared) ? d.cleared : [],

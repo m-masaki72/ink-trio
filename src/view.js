@@ -169,55 +169,35 @@ export function renderTally(list, note,
   { cleared, totals, today, stageCount, canSave, days = 0, dailyToday = false, rushBest = null }) {
   list.innerHTML = "";
 
-  // 日刊は看板なので先頭に置く。数えるのは回数ではなく、五問そろえた日の数
-  {
+  const row = (label, value, unit, gain = "") => {
     const dt = document.createElement("dt");
-    dt.textContent = "日刊";
-    const val = document.createElement("dd");
-    val.className = "val";
-    const small = document.createElement("small");
-    small.textContent = " 日";
-    val.append(String(days), small);
-    const gain = document.createElement("dd");
-    gain.className = "gain";
-    gain.textContent = dailyToday ? "+1" : "";
-    list.append(dt, val, gain);
-  }
+    dt.textContent = label;
 
-  {
-    const dt = document.createElement("dt");
-    dt.textContent = "時間走";
     const val = document.createElement("dd");
     val.className = "val";
     const small = document.createElement("small");
-    small.textContent = " 問";
-    val.append(String(rushBest ? rushBest.solved : 0), small);
-    const gain = document.createElement("dd");
-    gain.className = "gain";
-    list.append(dt, val, gain);
-  }
+    small.textContent = unit;
+    val.append(String(value), small);
+
+    const g = document.createElement("dd");
+    g.className = "gain";
+    g.textContent = gain;
+
+    list.append(dt, val, g);
+  };
+
+  // 日刊と時間走は看板なので先頭に置く
+  row("日刊", days, " 日", dailyToday ? "+1" : "");
+  row("時間走", rushBest ? rushBest.solved : 0, " 問");
 
   for (const m of MODES) {
-    const dt = document.createElement("dt");
-    dt.textContent = m.label;
-
-    const val = document.createElement("dd");
-    val.className = "val";
-    const small = document.createElement("small");
-    if (m.k === "t") {
-      small.textContent = ` / ${stageCount} 面`;
-      val.append(String(clearedCount(cleared)), small);
-    } else {
-      small.textContent = " 回";
-      val.append(String(totals[m.k] | 0), small);
-    }
-
-    const gain = document.createElement("dd");
-    gain.className = "gain";
     const g = today[m.k] | 0;
-    gain.textContent = g > 0 ? `+${g}` : "";   // 0 は出さない。増えたときだけ知らせる
-
-    list.append(dt, val, gain);
+    row(
+      m.label,
+      m.k === "t" ? clearedCount(cleared) : (totals[m.k] | 0),
+      m.k === "t" ? ` / ${stageCount} 面` : " 回",
+      g > 0 ? `+${g}` : "",        // 0 は出さない。増えたときだけ知らせる
+    );
   }
 
   const gained = gainedToday(today);

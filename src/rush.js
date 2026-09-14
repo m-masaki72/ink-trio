@@ -3,32 +3,16 @@
 // 多重アカウントで練習しても別の盤が来るだけになる。
 // 時計と乱数を注入するので、ブラウザなしで検証できる。
 
-import { BANDS, featuresOf } from "./daily.js";
-import { generateSequence } from "./puzzles.js";
+import { pickInBand } from "./puzzles.js";
 
 export const RUSH_LEVEL = 10;
 export const RUSH_MS = 300000;      // 5分
 export const RUNS_PER_DAY = 3;      // 記録に残る走行。これを超えたぶんは練習
-const MAX_TRIES = 50;
 
-export function inBand(cellSeq, level, bands = BANDS) {
-  const b = bands[level];
-  if (!b) return true;
-  const f = featuresOf(cellSeq);
-  return f.inked >= b.inked[0] && f.inked <= b.inked[1]
-    && f.colors >= b.colors[0] && f.colors <= b.colors[1];
-}
-
-// 日刊と同じ帯で校正する。難度が揃っていないと、問数で比べる意味がなくなる
-export function pickPuzzle(random = Math.random, level = RUSH_LEVEL) {
-  let first = null;
-  for (let k = 0; k < MAX_TRIES; k++) {
-    const seq = generateSequence(level, random);
-    if (first === null) first = seq;
-    if (inBand(seq, level)) return seq;
-  }
-  return first;
-}
+// 号に紐づかないので素の乱数で引く。帯は日刊と同じものを使う。
+// 難度が揃っていないと、問数で比べる意味がなくなる
+export const pickPuzzle = (random = Math.random, level = RUSH_LEVEL) =>
+  pickInBand(level, () => random);
 
 export function createRun({ now, random = Math.random, limit = RUSH_MS, level = RUSH_LEVEL }) {
   let startedAt = null;

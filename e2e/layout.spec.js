@@ -39,6 +39,17 @@ for (const name of 端末) {
       expect(w, "刷り台のマスは縮めない").toBeGreaterThanOrEqual(44);
     });
 
+    // バーの中身が文字単位で折り返すと、盤が画面外へ押し出される。
+    // 「目標と盤が同時に見える」検査はバーの内部が崩れても通ってしまう
+    test("遊び方のバーが縦に伸びすぎない", async ({ page }) => {
+      await openGame(page, { done: true });
+      for (const [mode, bar] of [["daily", "#issuebar"], ["rush", "#rushbar"]]) {
+        await page.click(`.tab[data-mode="${mode}"]`);
+        const h = await page.locator(bar).evaluate(e => e.getBoundingClientRect().height);
+        expect(h, `${mode} のバーが ${Math.round(h)}px`).toBeLessThanOrEqual(130);
+      }
+    });
+
     test("横スクロールは出ない", async ({ page }) => {
       await openGame(page, { reached: STAGE.三つの重なり });
       const over = await page.evaluate(() =>

@@ -1,9 +1,10 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import {
-  EPOCH, SHAPE, BANDS, issueOf, seeded, featuresOf, puzzleOf, issueSet,
+  EPOCH, SHAPE, issueOf, seeded, puzzleOf, issueSet,
+  blankRecord, solvedCount, totalMs, nextSlot, isComplete, mergeSlot, bumpDays,
 } from "../src/daily.js";
-import { buildPuzzle } from "../src/puzzles.js";
+import { BANDS, buildPuzzle, featuresOf } from "../src/puzzles.js";
 
 const 号数 = 200;
 
@@ -96,4 +97,74 @@ test("代表号の盤面を固定する", () => {
     [5, 18, 23, 22, 4, 22, 10, 20, 5, 23],
     [0, 1, 13, 3, 21, 10, 4, 20, 15, 14],
   ]);
+});
+
+/* ---------- 号の記録 ---------- */
+
+const 一手 = (slot, ms, extra = {}) => ({ slot, ms, undo: 0, seq: [slot], aid: false, ...extra });
+
+test("空の記録は五枠ぶんで、まだ何も解けていない", () => {
+  const rec = blankRecord();
+  assert.equal(rec.ms.length, SHAPE.length);
+  assert.equal(solvedCount(rec), 0);
+  assert.equal(totalMs(rec), 0);
+  assert.equal(nextSlot(rec), 0);
+  assert.equal(isComplete(rec), false);
+});
+
+test("解いた枠が埋まり、次の枠へ進む", () => {
+  const rec = mergeSlot(blankRecord(), 一手(0, 1234));
+  assert.equal(rec.ms[0], 1234);
+  assert.equal(solvedCount(rec), 1);
+  assert.equal(nextSlot(rec), 1);
+  assert.deepEqual(rec.seq[0], [0]);
+});
+
+// 済んだ号をめくり直せるようにした結果、遅い記録で上書きされうる
+test("済んだ枠は、良くなったときだけ入れ替わる", () => {
+  const 一度目 = mergeSlot(blankRecord(), 一手(0, 5000, { undo: 3, seq: [1, 2] }));
+  const 遅い = mergeSlot(一度目, 一手(0, 9000, { undo: 0, seq: [9] }));
+  assert.equal(遅い.ms[0], 5000, "遅い記録では上書きしない");
+  assert.equal(遅い.undo[0], 3);
+  assert.deepEqual(遅い.seq[0], [1, 2]);
+
+  const 速い = mergeSlot(一度目, 一手(0, 2000, { undo: 1, seq: [7] }));
+  assert.equal(速い.ms[0], 2000);
+  assert.equal(速い.undo[0], 1, "手戻りと手順も一緒に入れ替わる");
+  assert.deepEqual(速い.seq[0], [7]);
+});
+
+test("補助を使った事実は消えない", () => {
+  const rec = mergeSlot(mergeSlot(blankRecord(), 一手(0, 100, { aid: true })), 一手(1, 100));
+  assert.equal(rec.aid, true);
+});
+
+test("元の記録は書き換えない", () => {
+  const 元 = blankRecord();
+  mergeSlot(元, 一手(0, 1234));
+  assert.equal(元.ms[0], 0);
+});
+
+const 満了 = () => SHAPE.reduce((rec, _, i) => mergeSlot(rec, 一手(i, 1000)), blankRecord());
+const 素の日刊 = { days: 0, lastDay: "", clock: true, send: false, sets: {} };
+
+test("五問そろえた日だけ、刷った日数が増える", () => {
+  const 途中 = mergeSlot(blankRecord(), 一手(0, 1000));
+  assert.equal(bumpDays(素の日刊, { rec: 途中, issue: 9, todayIssue: 9, today: "2026-09-14" }).days, 0);
+
+  const 後 = bumpDays(素の日刊, { rec: 満了(), issue: 9, todayIssue: 9, today: "2026-09-14" });
+  assert.equal(後.days, 1);
+  assert.equal(後.lastDay, "2026-09-14");
+});
+
+// 過去号を埋めて日数を稼げると、「刷った日」の意味が壊れる
+test("過去号をそろえても今日は増えない", () => {
+  const 後 = bumpDays(素の日刊, { rec: 満了(), issue: 3, todayIssue: 9, today: "2026-09-14" });
+  assert.equal(後.days, 0);
+});
+
+test("同じ日に二度そろえても一日ぶん", () => {
+  const 一度 = bumpDays(素の日刊, { rec: 満了(), issue: 9, todayIssue: 9, today: "2026-09-14" });
+  const 二度 = bumpDays(一度, { rec: 満了(), issue: 9, todayIssue: 9, today: "2026-09-14" });
+  assert.equal(二度.days, 1);
 });

@@ -2,7 +2,7 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import {
   SAVE_KEY, SAVE_VERSION, KNOWN_VERSIONS, DEFAULTS, LEVELS, MARK_MODES,
-  MAX_SETS, MAX_MS, freshDaily, freshRush,
+  MAX_SETS, MAX_MS, freshDaily, freshRush, freshState,
   sanitize, serialize, openBackend, createSaveFile,
 } from "../src/storage.js";
 
@@ -40,7 +40,7 @@ test("到達面数は下限も上限も枠に収める", () => {
 test("知らない版と壊れた値は既定に落とす", () => {
   for (const raw of [null, undefined, {}, { v: 9 }, { v: "2" }, [], 42, "x"]) {
     assert.deepEqual(sanitize(raw, OPTS),
-      { ...DEFAULTS, cleared: [], totals: {}, today: {}, daily: freshDaily(), rush: freshRush() });
+      freshState());
   }
 });
 
