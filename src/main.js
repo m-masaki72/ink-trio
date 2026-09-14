@@ -5,6 +5,7 @@ import { openBackend, createSaveFile } from "./storage.js";
 import { TUTORIAL, generateSequence } from "./puzzles.js";
 import { createGame, PRESSED, BLOCKED, UNDONE } from "./game.js";
 import { createAudio } from "./audio.js";
+import { registerServiceWorker } from "./pwa.js";
 import { dayKeyOf, rollDay, recordClear } from "./tally.js";
 import {
   buildGrid, paintCell, flashAround, pulseFromCenter, clearEffects,
@@ -398,3 +399,6 @@ if (state.tutorialDone) {
 }
 showSaveInfo();
 showTally();
+
+// 圏外でも開けるようにする。使えない環境では何も起きない
+registerServiceWorker(navigator.serviceWorker, "./sw.js");
