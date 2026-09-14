@@ -21,6 +21,7 @@ const ASSETS = [
   "./src/palette.js",
   "./src/pwa.js",
   "./src/puzzles.js",
+  "./src/rush.js",
   "./src/rules.js",
   "./src/storage.js",
   "./src/tally.js",

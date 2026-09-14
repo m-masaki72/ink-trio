@@ -73,8 +73,9 @@ test("五問そろえると号が刷り上がり、共有が出る", async ({ pa
   await expect(status(page)).toContainText(`第${今日の号()}号を刷り上げました`);
   await expect(page.locator("#issueStep")).toContainText(`済 ${SHAPE.length}`);
   await expect(page.locator("#shareRow")).toBeVisible();
-  await expect(page.locator("#tallyList .val").first()).toContainText("1", "刷った日が一日増える");
-  await expect(page.locator("#tallyList .gain").first()).toHaveText("+1");
+  await expect(page.locator('#tallyList dt:text-is("日刊") + .val'))
+    .toContainText("1", "刷った日が一日増える");
+  await expect(page.locator('#tallyList dt:text-is("日刊") + .val + .gain')).toHaveText("+1");
 
   // 共有先へ渡す本文は、押した瞬間ではなくリンクに載っているので確かめられる
   const href = await page.locator("#shareX").getAttribute("href");

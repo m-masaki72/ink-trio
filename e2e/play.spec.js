@@ -79,7 +79,8 @@ test("答えの手順どおりに押すと校了になる", async ({ page }) => 
   await expect(status(page)).toContainText("刷り上がりました。最短の3手です");
   await expect(remaining(page)).toHaveText("0");
   await expect(page.locator("#inkName")).toHaveText("刷り上がり");
-  await expect(page.locator("#tallyList .gain").nth(1)).toHaveText("+1", "練習の今日ぶんが増える");
+  await expect(page.locator('#tallyList dt:text-is("練習") + .val + .gain'))
+    .toHaveText("+1", "練習の今日ぶんが増える");
   await expect(page.locator("#undoKey")).toBeDisabled("揃えたあとは戻せない");
   await game.expectClean();
 });

@@ -15,11 +15,12 @@ export const MARK_MODES = ["bars", "letters", "digits", "none"];
 
 // 参照を共有しないよう、入れ物は毎回作る
 export const freshDaily = () => ({ days: 0, lastDay: "", clock: true, send: false, sets: {} });
+export const freshRush = () => ({ day: "", count: 0, today: null, best: null });
 
 export const DEFAULTS = {
   reached: 0, cleared: [], tutorialDone: false, level: 6,
   markMode: "none", palName: "vivid", soundOn: true, crtOn: true, showDiff: false,
-  totals: {}, today: {}, dayKey: "", daily: freshDaily(),
+  totals: {}, today: {}, dayKey: "", daily: freshDaily(), rush: freshRush(),
 };
 
 const clamp = (v, lo, hi) => Math.min(Math.max(v, lo), hi);
@@ -63,6 +64,23 @@ function sanitizeSets(raw, cellCount, maxMoves) {
   return out;
 }
 
+// 走行の記録。何も入っていなければ「まだ走っていない」として null に落とす
+function sanitizeScore(raw) {
+  const o = plainObject(raw);
+  if (!Number.isFinite(o.solved) && !Number.isFinite(o.ms)) return null;
+  return { solved: whole(o.solved, 9999), ms: whole(o.ms, MAX_MS) };
+}
+
+function sanitizeRush(raw) {
+  const r = plainObject(raw);
+  return {
+    day: typeof r.day === "string" ? r.day.slice(0, 10) : "",
+    count: whole(r.count, 99),
+    today: sanitizeScore(r.today),
+    best: sanitizeScore(r.best),
+  };
+}
+
 function sanitizeDaily(raw, cellCount, maxMoves) {
   const d = plainObject(raw);
   return {
@@ -77,7 +95,8 @@ function sanitizeDaily(raw, cellCount, maxMoves) {
 // 保存された値は信用しない。同一オリジンの別ページからも書き換えられる。
 export function sanitize(raw, { stageCount, paletteNames, cellCount = 25, maxMoves = 40 }) {
   const d = raw && KNOWN_VERSIONS.includes(raw.v) ? raw : null;
-  if (!d) return { ...DEFAULTS, cleared: [], totals: {}, today: {}, daily: freshDaily() };
+  if (!d) return { ...DEFAULTS, cleared: [], totals: {}, today: {},
+    daily: freshDaily(), rush: freshRush() };
   return {
     reached: clamp(d.reached | 0, 0, stageCount - 1),
     cleared: Array.isArray(d.cleared) ? d.cleared : [],
@@ -92,6 +111,7 @@ export function sanitize(raw, { stageCount, paletteNames, cellCount = 25, maxMov
     today: plainObject(d.today),
     dayKey: typeof d.day === "string" ? d.day : "",
     daily: sanitizeDaily(d.daily, cellCount, maxMoves),
+    rush: sanitizeRush(d.rush),
   };
 }
 
@@ -102,7 +122,7 @@ export function serialize(s) {
     level: s.level, marks: s.markMode, pal: s.palName,
     snd: s.soundOn, crt: s.crtOn, diff: s.showDiff,
     totals: s.totals, day: s.dayKey, today: s.today,
-    daily: s.daily,
+    daily: s.daily, rush: s.rush,
   };
 }
 

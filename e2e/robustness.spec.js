@@ -23,7 +23,7 @@ for (const [name, value] of Object.entries(壊れた保存値)) {
 
     await expect(page.locator("#board .cell")).toHaveCount(25);
     await expect(par(page)).not.toHaveText("—");
-    await expect(page.locator("#tallyList > *")).toHaveCount(15, "記録欄まで描き切る");
+    await expect(page.locator("#tallyList > *")).toHaveCount(18, "記録欄まで描き切る");
     await expect(page.locator("#proof .cell.lit").first()).toBeVisible();
     expect(errors).toEqual([]);
   });
@@ -85,7 +85,8 @@ test("モジュールと外部スタイルシートがすべて読み込まれ�
   expect(loaded).toEqual([
     "src/audio.js", "src/daily.js", "src/game.js", "src/main.js",
     "src/palette.js", "src/puzzles.js", "src/pwa.js", "src/rules.js",
-    "src/share.js", "src/storage.js", "src/tally.js", "src/view.js", "styles.css",
+    "src/rush.js", "src/share.js", "src/storage.js", "src/tally.js",
+    "src/view.js", "styles.css",
   ]);
   await expect(page.locator("style")).toHaveCount(0, "インラインの style タグは残していない");
   await game.expectClean();

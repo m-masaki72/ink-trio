@@ -2,7 +2,7 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import {
   SAVE_KEY, SAVE_VERSION, KNOWN_VERSIONS, DEFAULTS, LEVELS, MARK_MODES,
-  MAX_SETS, MAX_MS, freshDaily,
+  MAX_SETS, MAX_MS, freshDaily, freshRush,
   sanitize, serialize, openBackend, createSaveFile,
 } from "../src/storage.js";
 
@@ -40,7 +40,7 @@ test("到達面数は下限も上限も枠に収める", () => {
 test("知らない版と壊れた値は既定に落とす", () => {
   for (const raw of [null, undefined, {}, { v: 9 }, { v: "2" }, [], 42, "x"]) {
     assert.deepEqual(sanitize(raw, OPTS),
-      { ...DEFAULTS, cleared: [], totals: {}, today: {}, daily: freshDaily() });
+      { ...DEFAULTS, cleared: [], totals: {}, today: {}, daily: freshDaily(), rush: freshRush() });
   }
 });
 
@@ -139,7 +139,7 @@ test("openBackend は使えない環境で null を返す", () => {
 
 test("serialize は保存する項目だけを書き出す", () => {
   const keys = Object.keys(serialize(sanitize(full(), OPTS))).sort();
-  assert.deepEqual(keys, ["cleared", "crt", "daily", "day", "diff", "done", "level", "marks", "pal", "reached", "snd", "today", "totals", "v"]);
+  assert.deepEqual(keys, ["cleared", "crt", "daily", "day", "diff", "done", "level", "marks", "pal", "reached", "rush", "snd", "today", "totals", "v"]);
 });
 
 /* ---------- 日刊（v3）---------- */
@@ -215,4 +215,39 @@ test("日刊は書いて読み戻しても変わらない", () => {
   const once = sanitize(withDaily(daily), OPTS);
   const twice = sanitize({ ...serialize(once), v: SAVE_VERSION }, OPTS);
   assert.deepEqual(twice.daily, once.daily);
+});
+
+/* ---------- 時間走（v3）---------- */
+
+const withRush = rush => full({ rush });
+
+test("走っていなければ記録は空", () => {
+  const r = sanitize(withRush({}), OPTS).rush;
+  assert.deepEqual(r, freshRush());
+});
+
+test("走行の記録は数として読み直す", () => {
+  const r = sanitize(withRush({ day: "2026-09-14", count: 2,
+    today: { solved: 7, ms: 240000 }, best: { solved: 9, ms: 280000 } }), OPTS).rush;
+  assert.equal(r.day, "2026-09-14");
+  assert.equal(r.count, 2);
+  assert.deepEqual(r.today, { solved: 7, ms: 240000 });
+  assert.deepEqual(r.best, { solved: 9, ms: 280000 });
+});
+
+// 同一オリジンの別ページから桁の大きい値を入れられても、表示が壊れないようにする
+test("走行の記録も値域で止める", () => {
+  const r = sanitize(withRush({ count: 1e9,
+    today: { solved: 1e9, ms: 1e15 }, best: "こわれている" }), OPTS).rush;
+  assert.equal(r.count, 99);
+  assert.deepEqual(r.today, { solved: 9999, ms: MAX_MS });
+  assert.equal(r.best, null, "数でないものは走っていない扱い");
+});
+
+test("時間走も書いて読み戻して変わらない", () => {
+  const rush = { day: "2026-09-14", count: 3,
+    today: { solved: 5, ms: 100000 }, best: { solved: 8, ms: 250000 } };
+  const once = sanitize(withRush(rush), OPTS);
+  const twice = sanitize({ ...serialize(once), v: SAVE_VERSION }, OPTS);
+  assert.deepEqual(twice.rush, once.rush);
 });

@@ -8,6 +8,7 @@ import { createAudio } from "./audio.js";
 import { SZ, MAX_MOVES } from "./rules.js";
 import { SHAPE, issueOf, issueSet } from "./daily.js";
 import { boardText, shareText, formatDuration } from "./share.js";
+import { RUSH_MS, RUNS_PER_DAY, createRun, better } from "./rush.js";
 import { registerServiceWorker } from "./pwa.js";
 import { dayKeyOf, rollDay, recordClear } from "./tally.js";
 import {
@@ -28,6 +29,10 @@ const el = {
   issueClock: $("issueClock"), issuePrev: $("issuePrev"), issueNext: $("issueNext"),
   shareRow: $("shareRow"), shareCopy: $("shareCopy"), shareX: $("shareX"),
   shareNote: $("shareNote"),
+  rushbar: $("rushbar"), rushStart: $("rushStart"), rushPass: $("rushPass"),
+  rushLeft: $("rushLeft"), rushCount: $("rushCount"), rushReview: $("rushReview"),
+  rushQuit: $("rushQuit"),
+  rushNote: $("rushNote"),
 };
 
 const AUTO_SECONDS = 3;
@@ -67,6 +72,9 @@ let pressedAt = 0;        // 最初の一手の時刻。盤を読む時間は計
 let undoCount = 0;
 let pressedCells = [];
 let clockTimer = null;
+let run = null;           // いまの走行
+let rushTimer = null;
+let review = [];          // パスした盤の見直し待ち
 let tickTimer = null;
 
 const pal = () => PAL[state.palName];
@@ -107,6 +115,7 @@ function showTally() {
     cleared: state.cleared, totals: state.totals, today: state.today,
     stageCount: TUTORIAL.length, canSave: saveFile.available,
     days: state.daily.days, dailyToday: state.daily.lastDay === dayKeyOf(),
+    rushBest: state.rush.best,
   });
 }
 
@@ -210,9 +219,18 @@ function showShare(rec) {
 }
 
 function setMode(m) {
+  if (playMode === "rush" && m !== "rush") stopRush();
   playMode = m;
   paintTabs();
   stopClock();
+  if (m === "rush") {
+    run = null;
+    review = [];
+    rollRushDay();
+    setStatus(`時間走です。「走る」で ${RUSH_MS / 60000}分の走行が始まります。`, false);
+    drawBars();
+    return;
+  }
   if (m === "daily") {
     if (!todayIssue()) { setStatus("日刊はまだ始まっていません。", false); return; }
     openIssue(issue || todayIssue());
@@ -221,6 +239,112 @@ function setMode(m) {
   } else {
     newGame(state.level);
   }
+}
+
+/* ---------- 時間走 ---------- */
+
+const 分秒 = ms => {
+  const t = Math.ceil(ms / 1000);
+  return `${Math.floor(t / 60)}:${String(t % 60).padStart(2, "0")}`;
+};
+
+// 日付が変わったら今日の走行回数を戻す。通算のベストには手を触れない
+function rollRushDay() {
+  const today = dayKeyOf();
+  if (state.rush.day === today) return;
+  state = { ...state, rush: { ...state.rush, day: today, count: 0, today: null } };
+}
+
+function stopRushClock() { clearInterval(rushTimer); rushTimer = null; }
+
+function drawRushBar() {
+  el.rushbar.hidden = playMode !== "rush";
+  if (playMode !== "rush") { stopRushClock(); return; }
+  const 走行中 = !!(run && run.running);
+  el.rushLeft.textContent = 分秒(走行中 ? run.remaining() : RUSH_MS);
+  el.rushCount.textContent = run ? `${run.solved}問` : "";
+  el.rushPass.hidden = !走行中;
+  el.rushQuit.hidden = !走行中;
+  el.rushStart.hidden = 走行中;
+  el.rushStart.textContent = run ? "もう一度走る" : "走る";
+  el.rushReview.hidden = 走行中 || review.length === 0;
+  const 残り = Math.max(0, RUNS_PER_DAY - state.rush.count);
+  const ベスト = state.rush.best ? `　自己最高 ${state.rush.best.solved}問` : "";
+  el.rushNote.textContent = (残り > 0 ? `記録に残せる走行 あと${残り}回` : "練習走行") + ベスト;
+}
+
+function drawBars() { drawIssueBar(); drawRushBar(); }
+
+function nextRushBoard(seq) {
+  if (!seq) return endRush();
+  closeFinish();
+  start(seq);
+}
+
+function startRush() {
+  rollRushDay();
+  review = [];
+  run = createRun({ now: () => performance.now() });
+  const seq = run.start();
+  stage = -1;
+  closeFinish();
+  start(seq);
+  setStatus(`時間走。${RUSH_MS / 60000}分で何問さばけるか。行き詰まったら「パス」で次へ。`, false);
+  stopRushClock();
+  rushTimer = setInterval(() => {
+    if (!run) return;
+    if (run.running) drawRushBar();
+    else endRush();
+  }, 100);
+  drawBars();
+}
+
+function advanceRush() {
+  audio.done();
+  const 数 = run.solved + 1;
+  nextRushBoard(run.solve());
+  if (run.running) setStatus(`時間走 ${数}問。次の盤です。`, false);
+}
+
+function endRush() {
+  stopRushClock();
+  if (!run) return;
+  run.stop();
+  const res = run.result();
+  review = res.passed;
+
+  rollRushDay();
+  const r = state.rush;
+  const 記録する = r.count < RUNS_PER_DAY;
+  const score = { solved: res.solved, ms: res.ms };
+  state = { ...state, rush: {
+    ...r,
+    count: 記録する ? r.count + 1 : r.count,
+    today: 記録する && better(score, r.today) ? score : r.today,
+    best: 記録する && better(score, r.best) ? score : r.best,
+  } };
+  save();
+  showTally();
+
+  setStatus(`時間走 おわり。${res.solved}問`
+    + (記録する ? `（${formatDuration(res.ms)}）。` : "。記録には残しません（練習走行）。")
+    + (review.length ? `　パスした${review.length}問を見直せます。` : ""), true);
+  drawBars();
+}
+
+function stopRush() {
+  stopRushClock();
+  if (run && run.running) run.stop();
+}
+
+function showReview() {
+  const seq = review.shift();
+  if (!seq) return drawBars();
+  stage = -1;
+  closeFinish();
+  start(seq);
+  setStatus(`見直し。パスした盤です。「表示設定 → 答えを見る」で手順が出ます。残り${review.length}問。`, false);
+  drawBars();
 }
 
 /* ---------- 出題 ---------- */
@@ -239,10 +363,10 @@ function start(cellSeq) {
   el.count.textContent = "";
   el.deck.classList.remove("spent");
   el.reroll.textContent = stage >= 0 ? "この面をやり直す" : "別の課題";
-  el.reroll.hidden = playMode === "daily";
+  el.reroll.hidden = playMode === "daily" || playMode === "rush";
   el.shareRow.hidden = true;
   el.shareNote.textContent = "";
-  drawIssueBar();
+  drawBars();
   renderChips(el.chips, pal());
   draw();
 }
@@ -308,12 +432,17 @@ function onPress(idx) {
 
   audio.ink(r.bit, 0);
   flashAround(cells, idx, "wet");
-  if (r.solved) onSolved();
+  if (r.solved) {
+    // 時間走では校了の余韻を出さない。3秒の演出に持ち時間を食わせないため
+    if (playMode === "rush" && run && run.running) return advanceRush();
+    onSolved();
+  }
   draw();
 }
 
 function onSolved() {
   const modeKey = playMode === "daily" ? String(issueBoards[slot].level)
+    : playMode === "rush" ? "10"
     : stage >= 0 ? "t" : String(state.level);
   if (stage >= 0) {
     const cleared = state.cleared.slice();
@@ -333,7 +462,7 @@ function onSolved() {
       : `${slot + 1}問目、刷り上がりました。${formatDuration(rec.ms[slot])}。`;
     if (done >= SHAPE.length) showShare(rec);
     showTally();          // 刷った日数は recordSlot のあとでないと増えていない
-    drawIssueBar();
+    drawBars();
   } else {
     winMsg = `刷り上がりました。最短の${game.moves}手です。`;
   }
@@ -397,6 +526,11 @@ for (const b of document.querySelectorAll(".tab")) {
   b.addEventListener("click", () => setMode(b.dataset.mode));
 }
 el.issuePrev.addEventListener("click", () => openIssue(issue - 1));
+el.rushStart.addEventListener("click", startRush);
+el.rushPass.addEventListener("click", () => { if (run && run.running) nextRushBoard(run.pass()); });
+el.rushReview.addEventListener("click", showReview);
+// 詰まった人を5分縛り付けない。やめた時点までは記録に残す
+el.rushQuit.addEventListener("click", () => { if (run && run.running) endRush(); });
 el.issueNext.addEventListener("click", () => openIssue(issue + 1));
 
 el.finish.addEventListener("click", cancelAdvance);

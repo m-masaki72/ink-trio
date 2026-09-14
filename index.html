@@ -35,6 +35,16 @@
     <button class="tab" data-mode="daily" role="tab" aria-selected="false">日刊</button>
     <button class="tab" data-mode="tutorial" role="tab" aria-selected="false">練習</button>
     <button class="tab" data-mode="free" role="tab" aria-selected="false">自由</button>
+    <button class="tab" data-mode="rush" role="tab" aria-selected="false">時間走</button>
+  </div>
+
+  <div class="issuebar" id="rushbar" hidden>
+    <button class="btn" id="rushStart">走る</button>
+    <button class="btn tiny" id="rushPass" hidden>パス</button>
+    <button class="btn tiny" id="rushQuit" hidden>やめる</button>
+    <div class="issue-name"><strong id="rushLeft">5:00</strong><span id="rushCount"></span></div>
+    <button class="btn tiny" id="rushReview" hidden>パスした問を見直す</button>
+    <span class="issue-clock" id="rushNote" aria-hidden="true"></span>
   </div>
 
   <div class="issuebar" id="issuebar" hidden>

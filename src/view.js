@@ -166,7 +166,7 @@ export function renderDeck({ blob, name, rest }, { remaining, nextBit, pal, solv
 const nextBitIndex = bit => [M, Y, B].indexOf(bit);
 
 export function renderTally(list, note,
-  { cleared, totals, today, stageCount, canSave, days = 0, dailyToday = false }) {
+  { cleared, totals, today, stageCount, canSave, days = 0, dailyToday = false, rushBest = null }) {
   list.innerHTML = "";
 
   // 日刊は看板なので先頭に置く。数えるのは回数ではなく、五問そろえた日の数
@@ -181,6 +181,19 @@ export function renderTally(list, note,
     const gain = document.createElement("dd");
     gain.className = "gain";
     gain.textContent = dailyToday ? "+1" : "";
+    list.append(dt, val, gain);
+  }
+
+  {
+    const dt = document.createElement("dt");
+    dt.textContent = "時間走";
+    const val = document.createElement("dd");
+    val.className = "val";
+    const small = document.createElement("small");
+    small.textContent = " 問";
+    val.append(String(rushBest ? rushBest.solved : 0), small);
+    const gain = document.createElement("dd");
+    gain.className = "gain";
     list.append(dt, val, gain);
   }
 
