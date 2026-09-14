@@ -15,8 +15,13 @@ export function saved(overrides = {}) {
 export async function openGame(page, overrides) {
   const errors = [];
   page.on("pageerror", e => errors.push(String(e).split("\n")[0]));
+  // 例外を投げずに描画だけ壊れるもの（SVG の属性エラーなど）も拾う。
+  // 実際に、トンボの transform が3隅ぶん無言で失敗していた。
+  // 書体の取得失敗と通信の失敗だけは除く ── 検証環境と圏外テストの都合で、
+  // 製品の欠陥ではない（書体は system-ui に落ちて遊びは成立する）
+  const 環境の雑音 = /downloadable font|download failed|Failed to load resource|net::ERR_|NS_ERROR_/i;
   page.on("console", m => {
-    if (/Content Security Policy|Refused to/i.test(m.text())) errors.push(m.text());
+    if (m.type() === "error" && !環境の雑音.test(m.text())) errors.push(m.text().slice(0, 200));
   });
   // addInitScript は再読み込みのたびに走って保存値を上書きしてしまい、
   // 「保存されるか」を検証できなくなる。一度だけ書いて読み直す。

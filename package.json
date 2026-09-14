@@ -9,7 +9,8 @@
     "dev": "python3 -m http.server",
     "icons": "node tools/make-icons.mjs",
     "shots": "node tools/make-shots.mjs",
-    "check:public": "node tools/check-public.mjs"
+    "check:public": "node tools/check-public.mjs",
+    "pack:itch": "node tools/pack-itch.mjs"
   },
   "devDependencies": {
     "@playwright/test": "^1.63.0"

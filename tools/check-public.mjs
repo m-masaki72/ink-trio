@@ -12,12 +12,6 @@ import { fileURLToPath } from "node:url";
 
 const root = fileURLToPath(new URL("../", import.meta.url));
 const git = (...args) => execFileSync("git", args, { cwd: root, encoding: "utf8", maxBuffer: 1 << 28 });
-const grepAll = pattern => {
-  try {
-    return git("grep", "-InE", pattern, "--", ...[]).trim();
-  } catch { return ""; }
-};
-
 // 履歴の全コミットを対象にする
 const revs = git("rev-list", "--all").trim().split("\n").filter(Boolean);
 const grepHistory = pattern => {
@@ -26,9 +20,13 @@ const grepHistory = pattern => {
   } catch { return ""; }   // 見つからないと git grep は 1 を返す
 };
 
+// このファイル自身は除く。探すべき文字列を自分の中に持っているので必ず当たる。
+// パターンを弱めて誤検知を消すと、本物も見逃す
+const 自分自身 = /:tools\/check-public\.mjs:/;
+
 const 見つかったもの = [];
 const 調べる = (名前, pattern, 除外 = null) => {
-  let hits = grepHistory(pattern).split("\n").filter(Boolean);
+  let hits = grepHistory(pattern).split("\n").filter(Boolean).filter(l => !自分自身.test(l));
   if (除外) hits = hits.filter(l => !除外.test(l));
   if (hits.length) 見つかったもの.push({ 名前, hits });
   console.log(`${hits.length ? "✗" : "✓"} ${名前}${hits.length ? `  ${hits.length}件` : ""}`);

@@ -120,7 +120,14 @@ npm run test:all                     # 両方
 npm run icons          # icons/*.svg から PNG を焼く（意匠を変えたとき）
 npm run shots          # docs/*.png を撮り直す（画面が変わったとき）
 npm run check:public   # 公開して困るものが履歴に混ざっていないか調べる
+npm run pack:itch      # itch.io 用の zip を作る（dist/ink-trio-itch.zip）
 ```
+
+`npm run pack:itch` は配るファイルを **`sw.js` の取り込み一覧から導きます**。圏外用の
+一覧が「遊ぶのに要るもの全部」なので、二つ目の一覧を作らないためです。組んだあと
+itch の配り方（別オリジンの iframe・深いサブパス）を模して、盤が組まれて実際に解けるか・
+Service Worker の範囲・コンソールのエラーまで見てから zip にします。掲載の設定と
+文面は [docs/itch.md](docs/itch.md) にあります。
 
 `npm run shots` は簡易サーバを自分で立て、押す手順まで込みで写真を作ります。
 手で撮ると「どの面のどこを押した写真か」が失われて再現できなくなるためです。
