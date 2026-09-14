@@ -80,27 +80,23 @@ INDEX rush_by_score ON rush_run(solved DESC, ms ASC)
 
 ## 2. itch.io へ出す
 
-配布物は組んで動作確認まで済んでいる（iframe・深いサブパス配信・CSP 違反ゼロ）。
+配布物は道具になった。**手で組まない。**
 
-- zip の**直下に `index.html`**。テスト・道具・文書・撮影素材は入れない。
-  入れるのは `index.html` `styles.css` `favicon.svg` `manifest.webmanifest`
-  `sw.js` `LICENSE` `src/` `icons/*.png`
-- Kind of project: **HTML**、「played in the browser」にチェック
-- Embed: **960 × 720** ／ Fullscreen ON ／ Mobile friendly ON（Portrait）／
-  **自動開始 OFF**（音の再生許可を取るため一度クリックさせる）
-- 価格は**まず無料＋Donations**。初動の遊ばれた回数を落とさない
-- タグ: `puzzle` `logic` `color` `accessibility` `colorblind` `minimalist` `html5` `offline` `pwa`
+```sh
+npm run pack:itch      # dist/ink-trio-itch.zip
+```
 
-### 先に踏んだ罠
+配るファイルは `sw.js` の取り込み一覧から導き、組んだあと itch の配り方（別オリジンの
+iframe・深いサブパス）を模して検査してから zip にする。掲載の設定と文面（日本語・英語）は
+[docs/itch.md](docs/itch.md) にある。
+
+残っているのは **先生が itch.io の Web で公開する作業だけ**。
+
+### 忘れてはいけないこと
 
 **itch はゲームを別オリジンの iframe で配る。** サードパーティ Cookie を塞いでいる
 利用者では `localStorage` が使えない（iPad Safari の「サイト越えトラッキングを防ぐ」は
-**既定でオン**）。つまり itch 版では**日刊の記録も時間走の記録も残らない人がいる**。
+**既定でオン**）。つまり itch 版では日刊も時間走も記録が残らない人がいる。
 
 - **itch をランキングの本拠地にしない。** GitHub Pages が本拠地、itch は入口
-- `storage.js` の `available` が偽のときは、本家へ誘導する一文を出す
-  （遊び自体は壊れない。既にそう作ってある）
-
-### 掲載文
-
-日刊号と時間走が入る前に書いたものなので、**書き直してから出す**。
+- `storage.js` の `available` が偽のときは本家へ誘導する（遊び自体は壊れない）
