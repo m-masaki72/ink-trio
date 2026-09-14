@@ -61,4 +61,30 @@ test.describe("タッチ端末", () => {
     await expect(page.locator("#status")).toContainText("一手もどす");
     await expect(page.locator("#status")).not.toContainText("右クリック");
   });
+
+  // 指の端末では hover が最後に触れた要素へ貼り付いて離れない。
+  // 盤に白枠が残ると、色を見比べる遊びが成立しなくなる
+  test("hover の見た目はポインタのある端末にだけ出す", async ({ page }) => {
+    await openGame(page, {});
+    const 素通し = await page.evaluate(() => {
+      const 外 = [];
+      const 辿る = (rules, 守られている) => {
+        for (const r of rules) {
+          if (r.media) 辿る(r.cssRules, 守られている || /hover\s*:\s*hover/.test(r.conditionText));
+          else if (r.selectorText?.includes(":hover") && !守られている) 外.push(r.selectorText);
+        }
+      };
+      // 別オリジンの書体シートは中を読めないので飛ばす
+      for (const sheet of document.styleSheets) { try { 辿る(sheet.cssRules, false); } catch {} }
+      return 外;
+    });
+    expect(素通し, "(hover:hover) の外に置くと、タップした要素に残る").toEqual([]);
+  });
+
+  test("タップしても青い矩形が乗らない", async ({ page }) => {
+    await openGame(page, {});
+    const 色 = await page.locator('#board .cell[data-i="0"]')
+      .evaluate(e => getComputedStyle(e).webkitTapHighlightColor);
+    expect(色, "色を見比べる遊びなので、マスに別の色を重ねさせない").toBe("rgba(0, 0, 0, 0)");
+  });
 });

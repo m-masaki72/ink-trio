@@ -21,6 +21,7 @@
   }
   *{box-sizing:border-box}
   html,body{margin:0;padding:0}
+  html{-webkit-tap-highlight-color:transparent}
   body{
     background:radial-gradient(140% 90% at 50% -20%, #1b1822 0%, var(--room) 60%), var(--room);
     color:var(--text);
@@ -90,7 +91,9 @@
       linear-gradient(180deg, rgba(255,255,255,.07) 0%, rgba(0,0,0,.26) 100%)}
   .cell .miss,.cell .tag,.cell .num{z-index:2}
   button.cell{cursor:pointer}
-  button.cell:hover{outline:2px solid rgba(255,255,255,.6);outline-offset:-2px}
+  @media (hover:hover){
+    button.cell:hover{outline:2px solid rgba(255,255,255,.6);outline-offset:-2px}
+  }
   button.cell:focus-visible{outline:3px solid var(--amber);outline-offset:2px;z-index:3}
   button.cell:active{transform:scale(.94)}
 
@@ -168,7 +171,9 @@
     background:linear-gradient(180deg,#efe7d6 0%,#cfc4ae 100%);
     box-shadow:0 1px 0 rgba(255,255,255,.7) inset, 0 -2px 0 rgba(0,0,0,.22) inset,
       0 2px 4px rgba(0,0,0,.45)}
-  button.undo:hover{background:linear-gradient(180deg,#f7f0e2 0%,#d8cdb7 100%)}
+  @media (hover:hover){
+    button.undo:hover{background:linear-gradient(180deg,#f7f0e2 0%,#d8cdb7 100%)}
+  }
   button.undo:active{background:linear-gradient(180deg,#cfc4ae 0%,#bcb19b 100%);
     box-shadow:0 2px 5px rgba(0,0,0,.5) inset}
   button.undo svg{width:19px;height:19px;flex:none;fill:none;stroke:currentColor;
@@ -212,7 +217,12 @@
     border:0;border-radius:3px;padding:8px 15px;
     box-shadow:0 1px 0 rgba(255,255,255,.14) inset, 0 -1px 0 rgba(0,0,0,.5) inset, 0 1px 2px rgba(0,0,0,.5);
     transition:background .14s, color .14s, box-shadow .14s}
-  button.btn:hover{background:linear-gradient(180deg,#57514a 0%,#413c35 100%)}
+  @media (hover:hover){
+    button.btn:hover{background:linear-gradient(180deg,#57514a 0%,#413c35 100%)}
+  }
+  /* タップの青枠を消すぶん、押し込みで手応えを返す */
+  button.btn:active{background:linear-gradient(180deg,#332f29 0%,#3d382f 100%);
+    box-shadow:0 2px 5px rgba(0,0,0,.6) inset, 0 0 0 1px #000 inset}
   button.btn:focus-visible{outline:2px solid var(--amber);outline-offset:2px}
   button.btn[aria-pressed="true"]{
     background:linear-gradient(180deg,#2a2620 0%,#322d26 100%);
@@ -270,7 +280,9 @@
   .doc summary::-webkit-details-marker{display:none}
   .doc summary::before{content:"＋　";font-size:11px;opacity:.7}
   .doc[open] summary::before{content:"−　"}
-  .doc summary:hover{color:var(--text)}
+  @media (hover:hover){
+    .doc summary:hover{color:var(--text)}
+  }
   .doc summary:focus-visible{outline:2px solid var(--amber);outline-offset:3px}
   .doc p b{color:var(--text);font-weight:700}
   .doc p{font-size:13px;color:var(--dim);margin:12px 0 0;max-width:60ch}
