@@ -107,7 +107,7 @@ test("記録を消すと練習の1面目に戻る", async ({ page }) => {
   await page.click("#wipe");
   await expect(status(page)).toContainText("記録を消しました");
   await expect(par(page)).toHaveText("1");
-  await expect(page.locator("#tallyList .val").nth(2)).toContainText("0", "通算も 0 に戻る");
+  await expect(page.locator("#tallyList .val").nth(3)).toContainText("0", "通算も 0 に戻る");
 
   await page.reload();
   await expect(status(page)).toContainText("練習 1 / 21", "消したことが保存されている");

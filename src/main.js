@@ -106,6 +106,7 @@ function showTally() {
   renderTally(el.tallyList, el.tallyNote, {
     cleared: state.cleared, totals: state.totals, today: state.today,
     stageCount: TUTORIAL.length, canSave: saveFile.available,
+    days: state.daily.days, dailyToday: state.daily.lastDay === dayKeyOf(),
   });
 }
 
@@ -331,6 +332,7 @@ function onSolved() {
       ? `第${issue}号を刷り上げました。五問で${formatDuration(rec.ms.reduce((a, b) => a + b, 0))}です。`
       : `${slot + 1}問目、刷り上がりました。${formatDuration(rec.ms[slot])}。`;
     if (done >= SHAPE.length) showShare(rec);
+    showTally();          // 刷った日数は recordSlot のあとでないと増えていない
     drawIssueBar();
   } else {
     winMsg = `刷り上がりました。最短の${game.moves}手です。`;

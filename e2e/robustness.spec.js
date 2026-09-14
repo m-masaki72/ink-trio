@@ -23,7 +23,7 @@ for (const [name, value] of Object.entries(壊れた保存値)) {
 
     await expect(page.locator("#board .cell")).toHaveCount(25);
     await expect(par(page)).not.toHaveText("—");
-    await expect(page.locator("#tallyList > *")).toHaveCount(12, "記録欄まで描き切る");
+    await expect(page.locator("#tallyList > *")).toHaveCount(15, "記録欄まで描き切る");
     await expect(page.locator("#proof .cell.lit").first()).toBeVisible();
     expect(errors).toEqual([]);
   });
