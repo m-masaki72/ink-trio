@@ -33,5 +33,8 @@ jobs:
         if: failure()
         with:
           name: playwright-report
-          path: playwright-report/
+          # trace は test-results/ に出るので、両方ないと落ちた場面が追えない
+          path: |
+            playwright-report/
+            test-results/
           retention-days: 7
