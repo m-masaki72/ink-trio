@@ -122,3 +122,42 @@ test("前の号へさかのぼれる", async ({ page }) => {
   await expect(page.locator("#issueNo")).toHaveText(`第${今日の号() - 1}号`);
   await expect(page.locator("#issueNext")).toBeEnabled();
 });
+
+// 済んだ号の二問目以降に届かないと、README の「過去の号はいつでも遊べます」が嘘になる
+test("五問そろった号も、順にめくって遊び直せる", async ({ page }) => {
+  const n = 今日の号();
+  const 済み = { ms: [1, 2, 3, 4, 5], undo: [0, 0, 0, 0, 0], aid: false,
+    seq: [[], [], [], [], []] };
+  const game = await openGame(page, { v: 3, done: true,
+    daily: { days: 1, lastDay: "", clock: true, send: false, sets: { [String(n)]: 済み } } });
+
+  await page.click('.tab[data-mode="daily"]');
+  await expect(page.locator("#issueStep")).toContainText(`1 / ${SHAPE.length}問目　済 ${SHAPE.length}`);
+  await expect(page.locator("#shareRow")).toBeVisible("済んだ号は結果をもう一度写せる");
+
+  await 一問解く(page, 盤()[0].seq);
+  await 次へ(page);
+  await expect(page.locator("#issueStep")).toContainText(`2 / ${SHAPE.length}問目`);
+  await expect(page.locator("#par")).toHaveText(String(SHAPE[1]));
+
+  // 良い記録を遅い記録で上書きしない
+  await expect(page.locator("#issueStep")).toContainText(`済 ${SHAPE.length}`);
+  await game.expectClean();
+});
+
+// 起点より前の端末では号が無い。移ってしまうと、解いた瞬間に落ちる
+test("起点より前の日付では日刊へ移らない", async ({ page }) => {
+  const errors = [];
+  page.on("pageerror", e => errors.push(String(e).split("\n")[0]));
+  await page.clock.setFixedTime(new Date("2025-06-15T10:00:00"));
+  await page.goto("/index.html");
+  await page.waitForFunction(() => document.querySelectorAll("#board .cell").length === 25);
+
+  await page.click('.tab[data-mode="daily"]');
+  await expect(status(page)).toContainText("日刊はまだ始まっていません");
+  await expect(page.locator('.tab[data-mode="daily"]')).toHaveAttribute("aria-pressed", "false");
+  await expect(page.locator("#issuebar")).toBeHidden();
+
+  await press(page, 12);                      // 生きている盤を解いても落ちない
+  expect(errors, errors.join(" / ")).toEqual([]);
+});

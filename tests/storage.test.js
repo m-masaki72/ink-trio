@@ -201,6 +201,17 @@ test("手戻りの数が欠けていても零で埋める", () => {
   assert.deepEqual(out.undo, [0, 0, 0, 0, 0]);
 });
 
+// 枠数の合わない記録を通すと「済んだ号」と誤認して、日刊が進まなくなる
+test("五問ぶんでない記録は受け取らない", () => {
+  for (const ms of [[1], [1, 2, 3], [1, 2, 3, 4, 5, 6]]) {
+    const sets = { "257": 一組({ ms, seq: ms.map(() => []) }) };
+    assert.deepEqual(Object.keys(sanitize(withDaily({ sets }), OPTS).daily.sets), [],
+      `${ms.length}枠`);
+  }
+  const 正 = { "257": 一組() };
+  assert.deepEqual(Object.keys(sanitize(withDaily({ sets: 正 }), OPTS).daily.sets), ["257"]);
+});
+
 // 同一オリジンの別ページから保存領域を埋められないようにする
 test("号の件数には上限がある", () => {
   const sets = {};
@@ -250,4 +261,14 @@ test("時間走も書いて読み戻して変わらない", () => {
   const once = sanitize(withRush(rush), OPTS);
   const twice = sanitize({ ...serialize(once), v: SAVE_VERSION }, OPTS);
   assert.deepEqual(twice.rush, once.rush);
+});
+
+// 昇順のまま打ち切ると、上限を超えたあと新しい記録が一切残らなくなる
+test("上限を超えたら古い号から捨てる", () => {
+  const sets = {};
+  for (let i = 1; i <= MAX_SETS + 10; i++) sets[String(i)] = 一組();
+  const keys = Object.keys(sanitize(withDaily({ sets }), OPTS).daily.sets).map(Number);
+  assert.equal(keys.length, MAX_SETS);
+  assert.ok(keys.includes(MAX_SETS + 10), "いちばん新しい号が残る");
+  assert.ok(!keys.includes(1), "いちばん古い号が捨てられる");
 });

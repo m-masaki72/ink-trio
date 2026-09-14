@@ -56,6 +56,7 @@ const saveFile = createSaveFile(openBackend(), {
   paletteNames: PALETTE_NAMES,
   cellCount: SZ,
   maxMoves: MAX_MOVES,
+  slotCount: SHAPE.length,
 });
 
 let state = saveFile.load();
@@ -132,7 +133,7 @@ const solvedCount = rec => rec.ms.filter(v => v > 0).length;
 
 function paintTabs() {
   for (const b of document.querySelectorAll(".tab")) {
-    b.setAttribute("aria-selected", String(b.dataset.mode === playMode));
+    b.setAttribute("aria-pressed", String(b.dataset.mode === playMode));
   }
   el.levels.hidden = playMode !== "free";
 }
@@ -164,9 +165,13 @@ function recordSlot(ms) {
     ms: prev.ms.slice(), undo: prev.undo.slice(), seq: prev.seq.map(a => a.slice()),
     aid: prev.aid || usedAid,
   };
-  rec.ms[slot] = Math.max(1, Math.round(ms));
-  rec.undo[slot] = undoCount;
-  rec.seq[slot] = pressedCells.slice();
+  const 今回 = Math.max(1, Math.round(ms));
+  // 済んだ枠をもう一度解いたときは、良くなったときだけ入れ替える
+  if (prev.ms[slot] === 0 || 今回 < prev.ms[slot]) {
+    rec.ms[slot] = 今回;
+    rec.undo[slot] = undoCount;
+    rec.seq[slot] = pressedCells.slice();
+  }
 
   let { days, lastDay } = state.daily;
   const today = dayKeyOf();
@@ -194,8 +199,10 @@ function loadDailySlot(n) {
 function openIssue(n) {
   issue = Math.min(Math.max(n, 1), todayIssue() || 1);
   issueBoards = issueSet(issue);
-  const next = recordOf(issue).ms.findIndex(v => v === 0);
+  const rec = recordOf(issue);
+  const next = rec.ms.findIndex(v => v === 0);
   loadDailySlot(next < 0 ? 0 : next);
+  if (next < 0) showShare(rec);        // 済んだ号は結果をもう一度写せる
 }
 
 function showShare(rec) {
@@ -219,11 +226,23 @@ function showShare(rec) {
 }
 
 function setMode(m) {
-  if (playMode === "rush" && m !== "rush") stopRush();
+  const 前 = playMode;
+  // 走行中に同じタブを押しても取り替えない。無料の引き直しになってしまう
+  if (m === "rush" && 前 === "rush" && run && run.running) return;
+  // 起点より前の日付では号が無い。モードを移さずに知らせる
+  if (m === "daily" && !todayIssue()) {
+    setStatus("日刊はまだ始まっていません。端末の日付をご確認くださいませ。", false);
+    return;
+  }
+  if (前 === "rush" && m !== "rush") stopRush();
+
   playMode = m;
   paintTabs();
   stopClock();
+  el.shareRow.hidden = true;        // 日刊の結果をほかのタブへ持ち出さない
+
   if (m === "rush") {
+    stopRushClock();
     run = null;
     review = [];
     rollRushDay();
@@ -232,7 +251,6 @@ function setMode(m) {
     return;
   }
   if (m === "daily") {
-    if (!todayIssue()) { setStatus("日刊はまだ始まっていません。", false); return; }
     openIssue(issue || todayIssue());
   } else if (m === "tutorial") {
     loadStage(stage >= 0 ? stage : state.reached);
@@ -401,10 +419,12 @@ function endTutorial() {
 }
 
 function goNext() {
+  // 走行の外（見直し）で自由出題へ落とすと、時間走のまま迷子になる
+  if (playMode === "rush") return drawBars();
   if (playMode === "daily") {
     const next = recordOf(issue).ms.findIndex(v => v === 0);
-    if (next < 0) return drawIssueBar();      // 五問そろっている。勝手に進めない
-    return loadDailySlot(next);
+    // 済んだ号は順にめくれる。「過去の号はいつでも遊べる」という約束のため
+    return loadDailySlot(next < 0 ? (slot + 1) % SHAPE.length : next);
   }
   if (stage < 0) return newGame();
   if (stage + 1 < TUTORIAL.length) loadStage(stage + 1);
@@ -442,14 +462,16 @@ function onPress(idx) {
 
 function onSolved() {
   const modeKey = playMode === "daily" ? String(issueBoards[slot].level)
-    : playMode === "rush" ? "10"
     : stage >= 0 ? "t" : String(state.level);
   if (stage >= 0) {
     const cleared = state.cleared.slice();
     cleared[stage] = true;
     state = { ...state, cleared };
   }
-  state = recordClear(rollDay(state, dayKeyOf()), modeKey);
+  // 時間走は独自の記録を持つ。走行中は数えないのに見直しだけ数えると辻褄が合わない
+  state = playMode === "rush"
+    ? rollDay(state, dayKeyOf())
+    : recordClear(rollDay(state, dayKeyOf()), modeKey);
   save();
   showTally();
 
@@ -616,10 +638,7 @@ function setSeg(attr, value) {
   }
 }
 
-segWire(".seg button[data-k]", b => {
-  if (b.dataset.k === "t") loadStage(stage >= 0 ? stage : state.reached);
-  else newGame(Number(b.dataset.k));
-});
+segWire(".seg button[data-k]", b => newGame(Number(b.dataset.k)));
 segWire(".seg button[data-pal]", b => {
   state = { ...state, palName: b.dataset.pal };
   renderChips(el.chips, pal());

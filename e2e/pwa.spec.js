@@ -3,8 +3,11 @@ import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { openGame, press, status, STAGE } from "./helpers.js";
 
-const 並べた数 = readFileSync(fileURLToPath(new URL("../sw.js", import.meta.url)), "utf8")
-  .match(/const ASSETS = \[([\s\S]*?)\];/)[1].match(/"([^"]+)"/g).length;
+const swSource = readFileSync(fileURLToPath(new URL("../sw.js", import.meta.url)), "utf8");
+const 並べた数 = swSource.match(/const ASSETS = \[([\s\S]*?)\];/)[1].match(/"([^"]+)"/g).length;
+// 版を上げるたびに書き換えるテストにしない
+const 取り込み名 = swSource.match(/const PREFIX = "([^"]+)"/)[1]
+  + swSource.match(/const CACHE = PREFIX \+ "([^"]+)"/)[1];
 
 // マニフェストの取得は CDP でしか強制できず、Service Worker の扱いもブラウザ差が大きい。
 // layout.spec.js と同じく chromium の project だけが拾う（playwright.config.js の testIgnore）。
@@ -74,5 +77,5 @@ test("掃除がよそのプロジェクトの取り込みを巻き込まない",
   });
 
   expect(残ったもの).toContain("よそのプロジェクト-v1");
-  expect(残ったもの).toContain("inktrio-v1");
+  expect(残ったもの).toContain(取り込み名);
 });

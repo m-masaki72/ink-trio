@@ -5,7 +5,7 @@
 // 掃除のときに接頭辞で絞らないと、よそのプロジェクトの取り込みまで消してしまう。
 // storage.js の保存値と同じ事情（自分でしか壊せない場所ではない）。
 const PREFIX = "inktrio-";
-const CACHE = PREFIX + "v1";
+const CACHE = PREFIX + "v2";
 
 const ASSETS = [
   "./",

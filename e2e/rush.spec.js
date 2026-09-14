@@ -123,3 +123,52 @@ test("ほかのタブへ移ると走行は止まる", async ({ page }) => {
   await expect(page.locator("#rushLeft")).toHaveText("5:00", "走行はやり直しから");
   await expect(page.locator("#rushStart")).toBeVisible();
 });
+
+// 見直しを解いて自由出題へ落ちると、時間走のまま難易度も引き直しも無い画面に取り残される
+test("見直しを解いても時間走から出されない", async ({ page }) => {
+  const game = await openGame(page, { done: true });
+  await page.click('.tab[data-mode="rush"]');
+  await page.click("#rushStart");
+  await page.click("#rushPass");
+  await page.click("#rushQuit");
+  await page.click("#rushReview");
+
+  await 一問さばく(page);
+  await page.waitForTimeout(3600);            // 自動遷移の頃合いを過ぎるまで待つ
+
+  // 自由出題へ落ちると最短手数が state.level（既定6手）に変わる。10手のままなら残っている
+  await expect(page.locator("#par")).toHaveText(String(RUSH_LEVEL));
+  await expect(page.locator("#board .cell.lit")).not.toHaveCount(0, "解いた盤が残っている");
+  await expect(page.locator('.tab[data-mode="rush"]')).toHaveAttribute("aria-pressed", "true");
+  await expect(page.locator("#rushbar")).toBeVisible();
+  // 見直しは難易度別の通算に数えない（走行中は数えていないので辻褄が合わなくなる）
+  await expect(page.locator('#tallyList dt:text-is("むずかしい") + .val')).toContainText("0");
+  await game.expectClean();
+});
+
+test("走行中に同じタブを押しても走行は続く", async ({ page }) => {
+  await openGame(page, { done: true });
+  await page.click('.tab[data-mode="rush"]');
+  await page.click("#rushStart");
+  await page.click("#rushPass");
+  await expect(page.locator("#rushCount")).toHaveText("0問");
+
+  await page.click('.tab[data-mode="rush"]');
+  await expect(page.locator("#rushPass")).toBeVisible("走行が続いている");
+  await expect(page.locator("#rushStart")).toBeHidden();
+  await expect(page.locator("#rushNote")).toContainText("あと3回", "回数を消費していない");
+});
+
+test("日刊の結果を時間走のタブへ持ち出さない", async ({ page }) => {
+  const n = (await import("../src/daily.js")).issueOf(
+    (await import("../src/tally.js")).dayKeyOf());
+  const 済み = { ms: [1, 2, 3, 4, 5], undo: [0, 0, 0, 0, 0], aid: false,
+    seq: [[], [], [], [], []] };
+  await openGame(page, { v: 3, done: true,
+    daily: { days: 1, lastDay: "", clock: true, send: false, sets: { [String(n)]: 済み } } });
+
+  await page.click('.tab[data-mode="daily"]');
+  await expect(page.locator("#shareRow")).toBeVisible();
+  await page.click('.tab[data-mode="rush"]');
+  await expect(page.locator("#shareRow")).toBeHidden();
+});

@@ -31,11 +31,13 @@
       <h1>Ink&#8202;Trio</h1>
       <p>三色のインクを重ねて、色校正と同じ絵にする</p>
     </div>
-  <div class="tabs" role="tablist" aria-label="遊び方">
-    <button class="tab" data-mode="daily" role="tab" aria-selected="false">日刊</button>
-    <button class="tab" data-mode="tutorial" role="tab" aria-selected="false">練習</button>
-    <button class="tab" data-mode="free" role="tab" aria-selected="false">自由</button>
-    <button class="tab" data-mode="rush" role="tab" aria-selected="false">時間走</button>
+  <!-- tablist は tabpanel と矢印キー移動まで揃って初めて正しい。
+       実装は「押すと切り替わるボタン」なので、そう名乗る -->
+  <div class="tabs" role="group" aria-label="遊び方">
+    <button class="tab" data-mode="daily" aria-pressed="false">日刊</button>
+    <button class="tab" data-mode="tutorial" aria-pressed="false">練習</button>
+    <button class="tab" data-mode="free" aria-pressed="false">自由</button>
+    <button class="tab" data-mode="rush" aria-pressed="false">時間走</button>
   </div>
 
   <div class="issuebar" id="rushbar" hidden>
@@ -44,7 +46,7 @@
     <button class="btn tiny" id="rushQuit" hidden>やめる</button>
     <div class="issue-name"><strong id="rushLeft">5:00</strong><span id="rushCount"></span></div>
     <button class="btn tiny" id="rushReview" hidden>パスした問を見直す</button>
-    <span class="issue-clock" id="rushNote" aria-hidden="true"></span>
+    <span class="issue-clock" id="rushNote" role="status"></span>
   </div>
 
   <div class="issuebar" id="issuebar" hidden>

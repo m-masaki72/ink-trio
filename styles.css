@@ -72,7 +72,7 @@
     color:#cdc2ae;cursor:pointer;border:0;padding:9px 18px;border-radius:3px 3px 0 0;
     background:linear-gradient(180deg,#413c35 0%,#332f29 100%);
     box-shadow:0 -1px 0 rgba(255,255,255,.10) inset, 0 2px 4px rgba(0,0,0,.4)}
-  button.tab[aria-selected="true"]{color:var(--amber);
+  button.tab[aria-pressed="true"]{color:var(--amber);
     background:linear-gradient(180deg,#565048 0%,#4a453d 100%);
     text-shadow:0 0 10px rgba(242,180,92,.45);
     box-shadow:0 1px 0 rgba(255,255,255,.16) inset}

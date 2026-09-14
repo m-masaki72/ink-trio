@@ -42,21 +42,25 @@ const sequences = (v, len, cellCount, maxMoves) => {
 };
 
 // 壊れた号は既定に戻すのではなく、その号ごと無かったことにする
-function sanitizeSets(raw, cellCount, maxMoves) {
+function sanitizeSets(raw, cellCount, maxMoves, slotCount) {
   const src = plainObject(raw);
   const out = {};
   let n = 0;
-  for (const key of Object.keys(src)) {
+  // 溢れたときに捨てるのは古い号。昇順のまま打ち切ると、新しい記録が残らなくなる
+  const keys = Object.keys(src)
+    .filter(k => /^[1-9][0-9]{0,6}$/.test(k))
+    .sort((a, b) => Number(b) - Number(a));
+  for (const key of keys) {
     if (n >= MAX_SETS) break;
-    if (!/^[1-9][0-9]{0,6}$/.test(key)) continue;
     const r = plainObject(src[key]);
-    const ms = Array.isArray(r.ms) ? numbers(r.ms, MAX_MS, r.ms.length) : null;
-    if (!ms || ms.length === 0 || ms.length > 16) continue;
-    const seq = sequences(r.seq, ms.length, cellCount, maxMoves);
+    // 枠数が合わない記録を通すと「済んだ号」と誤認して、日刊が進まなくなる
+    const ms = numbers(r.ms, MAX_MS, slotCount);
+    if (!ms) continue;
+    const seq = sequences(r.seq, slotCount, cellCount, maxMoves);
     if (!seq) continue;
     out[key] = {
       ms, seq,
-      undo: numbers(r.undo, 9999, ms.length) || ms.map(() => 0),
+      undo: numbers(r.undo, 9999, slotCount) || ms.map(() => 0),
       aid: r.aid === true,
     };
     n++;
@@ -81,19 +85,20 @@ function sanitizeRush(raw) {
   };
 }
 
-function sanitizeDaily(raw, cellCount, maxMoves) {
+function sanitizeDaily(raw, cellCount, maxMoves, slotCount) {
   const d = plainObject(raw);
   return {
     days: whole(d.days, 1e6),
     lastDay: typeof d.lastDay === "string" ? d.lastDay.slice(0, 10) : "",
     clock: d.clock !== false,     // 時計の表示は既定でオン
     send: d.send === true,        // 送信は既定でオフ。ここを反転させない
-    sets: sanitizeSets(d.sets, cellCount, maxMoves),
+    sets: sanitizeSets(d.sets, cellCount, maxMoves, slotCount),
   };
 }
 
 // 保存された値は信用しない。同一オリジンの別ページからも書き換えられる。
-export function sanitize(raw, { stageCount, paletteNames, cellCount = 25, maxMoves = 40 }) {
+export function sanitize(raw,
+  { stageCount, paletteNames, cellCount = 25, maxMoves = 40, slotCount = 5 }) {
   const d = raw && KNOWN_VERSIONS.includes(raw.v) ? raw : null;
   if (!d) return { ...DEFAULTS, cleared: [], totals: {}, today: {},
     daily: freshDaily(), rush: freshRush() };
@@ -110,7 +115,7 @@ export function sanitize(raw, { stageCount, paletteNames, cellCount = 25, maxMov
     totals: plainObject(d.totals),
     today: plainObject(d.today),
     dayKey: typeof d.day === "string" ? d.day : "",
-    daily: sanitizeDaily(d.daily, cellCount, maxMoves),
+    daily: sanitizeDaily(d.daily, cellCount, maxMoves, slotCount),
     rush: sanitizeRush(d.rush),
   };
 }
