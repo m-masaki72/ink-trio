@@ -71,6 +71,9 @@ test("一問ごとに次へ進み、済みの数が増える", async ({ page }) 
 });
 
 test("五問そろえると号が刷り上がり、共有が出る", async ({ page }) => {
+  // 五問ぶん押すので、一問だけの検証の5倍の押下がある。CI の webkit は
+  // ローカルの6倍遅く（一問の検証で9秒かかる）、既定の30秒に収まらない
+  test.slow();
   const game = await openGame(page, { done: true });
   const set = 盤();
   await page.click('.tab[data-mode="daily"]');
