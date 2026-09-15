@@ -7,11 +7,21 @@ import { dayKeyOf } from "../src/tally.js";
 const 今日の号 = () => issueOf(dayKeyOf());
 const 盤 = () => issueSet(今日の号());
 
-// 刷り上がると3秒で勝手に進む。待たずに、盤を二度押して先へ送る
+// 刷り上がると3秒で勝手に進む。盤を押せば早送りできるが、揃えた瞬間の押下を
+// 拾わないよう、成立から350msは受け付けない（src/main.js の solvedAt）。
+// 待ちの起点は校了の出現に取る。押した時刻から数えると無視窓に落ちたとき、
+// 二度目が「自動遷移を止めるだけ」で終わり、進まないまま次の問題を押しにいく
 async function 次へ(page) {
+  const 校了 = page.locator("#finish");
+  const 歩み = page.locator("#issueStep");
+  await expect(校了).toBeVisible();
+  const 前 = await 歩み.textContent();
   await page.waitForTimeout(400);
-  await page.locator("#board").click();
-  await page.locator("#board").click();
+  await page.locator("#board").click();   // 眺める（自動遷移を止める）
+  await page.locator("#board").click();   // 次へ
+  // 進まなかったその場で落とす。でないと次の問題を押しにいって別所で詰まる
+  await expect(校了).toBeHidden();
+  await expect(歩み).not.toHaveText(前);
 }
 
 async function 一問解く(page, seq) {
