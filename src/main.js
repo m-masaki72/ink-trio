@@ -38,6 +38,7 @@ const el = {
 };
 
 const AUTO_SECONDS = 3;
+const GUIDED_STAGES = 6;   // 押す場所を案内する練習面の数。形と混色を覚えるまで
 
 // 右クリックのない端末に「右クリックで戻して」と言わない
 const coarse = matchMedia("(pointer: coarse)").matches;
@@ -88,12 +89,22 @@ const proofCells = buildGrid(el.proof, { interactive: false });
 
 /* ---------- 描画 ---------- */
 
+// 手順から外れたら案内しない。戻して手順に乗り直せば、また出る
+function guideAt() {
+  if (playMode !== "tutorial" || stage >= GUIDED_STAGES || game.solved) return -1;
+  const seq = TUTORIAL[stage].s, pressed = game.pressed;
+  if (pressed.some((c, j) => c !== seq[j])) return -1;
+  return pressed.length < seq.length ? seq[pressed.length] : -1;
+}
+
 function draw() {
   const showDiff = state.showDiff;
+  const guide = guideAt();
   for (let i = 0; i < cells.length; i++) {
     paintCell(cells[i], game.cellAt(i), {
       pal: pal(), markMode: state.markMode,
       showMiss: game.mismatched(i) && showDiff && !game.solved,
+      guide: i === guide,
     });
     paintCell(proofCells[i], game.targetAt(i), { pal: pal(), markMode: state.markMode });
   }

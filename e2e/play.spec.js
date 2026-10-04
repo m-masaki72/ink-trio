@@ -108,3 +108,50 @@ test("放っておくと次の課題へ自動で進む", async ({ page }) => {
   await expect(page.locator("#finish")).toBeHidden();
   await game.expectClean();
 });
+
+/* ---------- 押す場所の案内 ---------- */
+
+const 案内 = page => page.locator("#board .cell.guide");
+
+test("練習の序盤では次に押すマスを案内し、名前でも伝える", async ({ page }) => {
+  const game = await openGame(page, { reached: STAGE.中心をひと押し });
+  await expect(案内(page)).toHaveCount(1);
+  await expect(案内(page)).toHaveAttribute("data-i", "12");
+  await expect(案内(page)).toHaveAttribute("aria-label", /次に押すマス/);
+
+  await press(page, 12);
+  await expect(案内(page)).toHaveCount(0, "揃ったら案内しない");
+  await game.expectClean();
+});
+
+test("手順から外れたら案内を消し、戻せばまた出す", async ({ page }) => {
+  const game = await openGame(page, { reached: STAGE.二色をならべる });
+  await expect(案内(page)).toHaveAttribute("data-i", "0");
+
+  await press(page, 12);                      // 手順にない手
+  await expect(案内(page)).toHaveCount(0);
+  await page.click("#undoKey");
+  await expect(案内(page)).toHaveAttribute("data-i", "0");
+
+  await press(page, 0);
+  await expect(案内(page)).toHaveAttribute("data-i", "4", "二手目の場所へ移る");
+  await game.expectClean();
+});
+
+test("形と混色を覚えたあとの面では案内しない", async ({ page }) => {
+  const game = await openGame(page, { reached: STAGE.帯が交わる });
+  await expect(status(page)).toContainText("練習 7 / 21");
+  await expect(案内(page)).toHaveCount(0);
+  await game.expectClean();
+});
+
+test.describe("動きを減らす設定の案内", () => {
+  test.use({ reducedMotion: "reduce" });
+
+  test("案内の輪は止めたまま見せる", async ({ page }) => {
+    const game = await openGame(page, { reached: STAGE.中心をひと押し });
+    const anim = await 案内(page).evaluate(e => getComputedStyle(e, "::after").animationName);
+    expect(anim).toBe("none");
+    await game.expectClean();
+  });
+});

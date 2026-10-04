@@ -55,7 +55,7 @@ export function buildGrid(container, { interactive, onPress } = {}) {
   return cells;
 }
 
-export function paintCell(el, bits, { pal, markMode, showMiss }) {
+export function paintCell(el, bits, { pal, markMode, showMiss, guide }) {
   const hex = pal[bits];
   el.style.background = hex;
   el.style.color = contrastOn(hex);
@@ -64,7 +64,8 @@ export function paintCell(el, bits, { pal, markMode, showMiss }) {
   el.title = `${NAME[bits]}（${bits}）`;
   // 位置だけでなく、いま何が乗っているかを名前に含める
   el.setAttribute("aria-label",
-    `${place(Number(el.dataset.i))} ${NAME[bits]}${showMiss ? "　ずれている" : ""}`);
+    `${place(Number(el.dataset.i))} ${NAME[bits]}${showMiss ? "　ずれている" : ""}${guide ? "　次に押すマス" : ""}`);
+  el.classList.toggle("guide", !!guide);
 
   const s = el.parts.slots;
   s[0].className = bits & M ? "on" : "";

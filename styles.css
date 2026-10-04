@@ -134,6 +134,11 @@
   }
   button.cell:focus-visible{outline:3px solid var(--amber);outline-offset:2px;z-index:3}
   button.cell:active{transform:scale(.94)}
+  /* 練習の序盤で次に押すマス。マスを塗らず輪だけ重ねて、色の比較を邪魔しない */
+  .cell.guide::after{content:"";position:absolute;inset:22%;border-radius:50%;z-index:2;
+    pointer-events:none;border:2px solid #fff;box-shadow:0 0 0 2px rgba(0,0,0,.65);
+    animation:guide 1.2s ease-in-out infinite}
+  @keyframes guide{0%,100%{transform:scale(.8);opacity:.6}50%{transform:scale(1);opacity:1}}
 
   /* ---------- ブラウン管の質感 ---------- */
   /* 発光は三段。芯・にじみ・窓全体へのかぶり */
@@ -360,6 +365,7 @@
     .stamp{animation:none}
     .cell.pulse{animation:none}
     .cell.wet,.cell.lift{animation:none}
+    .cell.guide::after{animation:none}
     .grid.done{animation:none}
     .deck.spent{animation:blocked-flash .7s ease-out}
   }
