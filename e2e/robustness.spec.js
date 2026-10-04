@@ -7,7 +7,7 @@ const 壊れた保存値 = {
   "範囲外の到達面": saved({ reached: 9999 }),
   "知らない版": JSON.stringify({ v: 99, reached: 3 }),
   "配列が入った集計": saved({ totals: [1, 2, 3] }),
-  "許可外の目印と配色": saved({ marks: "<script>", pal: "neon", level: 99 }),
+  "許可外の目印と配色": saved({ marks: "<script>", pal: "neon" }),
   "__proto__ 混入": '{"v":2,"reached":0,"__proto__":{"polluted":1}}',
   "壊れた JSON": "{not json",
   "空文字": "",
@@ -23,7 +23,7 @@ for (const [name, value] of Object.entries(壊れた保存値)) {
 
     await expect(page.locator("#board .cell")).toHaveCount(25);
     await expect(par(page)).not.toHaveText("—");
-    await expect(page.locator("#tallyList > *")).toHaveCount(18, "記録欄まで描き切る");
+    await expect(page.locator("#tallyList > *")).toHaveCount(9, "記録欄まで描き切る");
     await expect(page.locator("#proof .cell.lit").first()).toBeVisible();
     expect(errors).toEqual([]);
   });
@@ -43,8 +43,6 @@ test("保存領域が使えなくても遊びは止まらない", async ({ page 
   await press(page, 12);
   await expect(status(page)).toContainText("刷り上がりました", "遊べる");
 
-  await page.click("#opts");
-  await expect(page.locator("#saveInfo")).toHaveText("この環境では保存できません");
   await expect(page.locator("#wipe")).toBeDisabled();
   await expect(page.locator("#tallyNote")).toContainText("記録を保存できません");
   expect(errors).toEqual([]);

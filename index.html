@@ -35,9 +35,8 @@
        実装は「押すと切り替わるボタン」なので、そう名乗る -->
   <div class="seg tabs" role="group" aria-label="遊び方">
     <button class="tab" data-mode="daily" aria-pressed="false">日刊</button>
-    <button class="tab" data-mode="tutorial" aria-pressed="false">練習</button>
-    <button class="tab" data-mode="free" aria-pressed="false">自由</button>
     <button class="tab" data-mode="rush" aria-pressed="false">時間走</button>
+    <button class="tab" data-mode="tutorial" aria-pressed="false">練習</button>
   </div>
 
   <div class="issuebar" id="rushbar" hidden>
@@ -116,20 +115,10 @@
   </div>
 
   <div class="bar">
-    <div class="seg" id="levels" role="group" aria-label="難易度">
-      <button class="btn" data-k="3">やさしい</button>
-      <button class="btn" data-k="6">ふつう</button>
-      <button class="btn" data-k="10">むずかしい</button>
-    </div>
-    <button class="btn" id="reroll">別の課題</button>
+    <button class="btn" id="reroll">この面をやり直す</button>
     <button class="btn" id="opts" aria-expanded="false" aria-controls="optpanel">表示設定</button>
   </div>
   </div>
-
-    <div class="inkkey">
-      <span class="inkkey-label">インク表</span>
-      <div class="chips" id="chips"></div>
-    </div>
   </div>
 
   <div class="opts" id="optpanel" hidden>
@@ -143,17 +132,10 @@
       </div>
     </div>
     <div class="opt-row">
-      <span>画面</span>
-      <div class="seg" role="group" aria-label="画面の質感">
-        <button class="btn" data-crt="on">ブラウン管</button>
-        <button class="btn" data-crt="off">フラット</button>
-      </div>
-    </div>
-    <div class="opt-row">
-      <span>配色</span>
-      <div class="seg" role="group" aria-label="配色">
-        <button class="btn" data-pal="vivid">ビビッド</button>
-        <button class="btn" data-pal="pastel">パステル</button>
+      <span>見た目</span>
+      <div class="seg" role="group" aria-label="見た目">
+        <button class="btn" data-pal="vivid">標準</button>
+        <button class="btn" data-pal="pastel">やわらか</button>
       </div>
     </div>
     <div class="opt-row">
@@ -168,11 +150,6 @@
       <button class="btn" id="diff" aria-pressed="false">ズレを示す</button>
       <button class="btn" id="peek" aria-pressed="false">答えを見る</button>
     </div>
-    <div class="opt-row">
-      <span>記録</span>
-      <span id="saveInfo">保存できます</span>
-      <button class="btn" id="wipe">記録を消す</button>
-    </div>
   </div>
 
   <div class="sol" id="sol"></div>
@@ -181,17 +158,21 @@
     <h3>これまでの記録</h3>
     <dl id="tallyList"></dl>
     <p class="note" id="tallyNote"></p>
+    <button class="btn tiny" id="wipe">記録を消す</button>
   </section>
 
   <details class="doc">
     <summary>遊び方とルール</summary>
-    <p>同じインクを二度重ねると打ち消し合って消え、三色揃うと白になります。8色は明度が等間隔の階段になるよう配置してあるので、色相が見分けにくい場合でも明るさの順で判別できます。</p>
-    <p>色に頼らずに配合を読むための目印を3種類用意しています。<b>帯</b>はマスの下辺の3本の細帯で、左からマゼンタ・イエロー・ブルーの有無。<b>記号</b>は同じ位置に M・Y・B の文字を置いたもので、含まれるインクだけが濃く出ます。<b>数字</b>はマゼンタを1、イエローを2、ブルーを4として合計した0〜7の値です。たとえば5ならマゼンタとブルー、7なら三色すべて。どの方式でも位置と形だけで配合が判別でき、色覚に依存しません。</p>
-    <p>押せるのは最短手数までです。使い切ると、それ以上はインクが乗りません。右クリックで戻してやり直してください。この制限があるため、揃えられたときは必ず最短手数で揃っています。</p>
-    <p>操作はすべて盤の上で完結します。<b>左クリック</b>でインクを乗せ、<b>一手もどす</b>のキー、または盤の上での<b>右クリック</b>で戻せます。もどすキーは押したままにすると続けて戻ります。白紙まで戻したいときは右クリックを続けてください。刷り上がると自動で次の課題に移りますが、途中で<b>クリック</b>すれば止まって眺められ、もう一度クリックすると次へ進みます。行き詰まったら<b>難易度ボタン</b>を押すと別の課題に差し替わります。キーボードでは矢印キーで移動、Enter で押下、Z または Backspace で一手戻す、Escape で自動遷移の中断ができます。</p>
-    <p><b>練習</b>は手で組んだ21の決まった課題です。1手で押す形を覚えるところから始まり、二色を並べる、少しだけ重ねる、同じ場所に重ねる、三色で白にする、いらない色を打ち消す、と一段ずつ進んで、最後は盤を白一色に染める12手になります。ここだけは毎回同じ盤面が出ますので、練習ボタンを押すと前回の続きから再開します。</p>
-    <p>練習以外で出題される問題は、選んだ難易度の手数がそのまま最短手数になるものだけを出しています。やさしいなら3手、ふつうなら6手、むずかしいなら10手ちょうどで必ず揃います。</p>
-    <p>最終的な絵は「どのマスをどのインクで押したか」だけで決まり、押す順序は結果を変えません。効いてくるのは、全体の手数がマゼンタ・イエロー・ブルーに何手ずつ配分されるか、という点です。</p>
+    <p>刷り台のマスを押すと、そのマスと周りの3×3にインクが乗ります。インクは<b>マゼンタ → イエロー → ブルー</b>の順に巡り、選べません。左の色校正と同じ配色になれば刷り上がりです。</p>
+    <p>同じインクを二度重ねると打ち消し合って消え、三色そろうと白になります。7色は明度が等間隔の階段になるよう選んであるので、色相が見分けにくくても明るさの順で読めます。</p>
+    <div class="inkkey">
+      <span class="inkkey-label">インク表</span>
+      <div class="chips" id="chips"></div>
+    </div>
+    <p>押せるのは最短手数までです。だから、揃えられたときは必ず最短手数で揃っています。押す順序は結果を変えません。効いてくるのは、三色に何手ずつ配分されるかです。</p>
+    <p><b>戻す</b>：「一手もどす」（押したままで連続）、または盤の上で右クリック。<b>キーボード</b>：矢印キーで移動、Enter で押す、Z か Backspace で戻す、Escape で自動送りを止める。</p>
+    <p><b>目印</b>（表示設定）で、色に頼らず配合を読めます。<b>帯</b>はマス下辺の3本で、左からマゼンタ・イエロー・ブルーの有無。<b>記号</b>は同じ位置の M・Y・B。<b>数字</b>はマゼンタ1・イエロー2・ブルー4の合計で、たとえば5ならマゼンタとブルーです。</p>
+    <p><b>日刊</b>は毎日5問（3・6・6・10・10手）。全員が同じ盤面を解き、過去の号もいつでも遊べます。<b>時間走</b>は5分で10手の課題を何問さばけるか。<b>練習</b>は手で組んだ21面で、前回の続きから始まります。</p>
   </details>
 </div>
 

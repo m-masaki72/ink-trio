@@ -6,8 +6,8 @@ export const STAGE = { 中心をひと押し: 0, 三つの重なり: 10, 内側�
 // ランダム出題に頼ると、検証が乱数任せになってしまう。
 export function saved(overrides = {}) {
   return JSON.stringify({
-    v: 2, reached: 0, cleared: [], done: false, level: 6,
-    marks: "none", pal: "vivid", snd: false, crt: true,
+    v: 2, reached: 0, cleared: [], done: false,
+    marks: "none", pal: "vivid", snd: false,
     totals: {}, day: "", today: {}, ...overrides,
   });
 }

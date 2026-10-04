@@ -22,7 +22,7 @@ test("色以外の目印を4通りに切り替えられる", async ({ page }) =>
   await game.expectClean();
 });
 
-test("配色を替えると盤とインク表の両方に効く", async ({ page }) => {
+test("見た目を替えると盤とインク表の両方に効く", async ({ page }) => {
   const game = await openGame(page, { reached: STAGE.三つの重なり });
   const blank = page.locator("#proof .cell").nth(24);      // インクの乗らないマス
   await expect(blank).toHaveCSS("background-color", "rgb(30, 20, 32)");   // vivid の白紙
@@ -34,12 +34,14 @@ test("配色を替えると盤とインク表の両方に効く", async ({ page 
   await game.expectClean();
 });
 
-test("ブラウン管とフラットを切り替えられる", async ({ page }) => {
+test("見た目は配色と質感を組で切り替える", async ({ page }) => {
   const game = await openGame(page, { reached: STAGE.三つの重なり });
   await expect(page.locator("html")).toHaveClass(/screen/);
   await openSettings(page);
-  await page.click('.seg button[data-crt="off"]');
+  await page.click('.seg button[data-pal="pastel"]');
   await expect(page.locator("html")).not.toHaveClass(/screen/);
+  await page.click('.seg button[data-pal="vivid"]');
+  await expect(page.locator("html")).toHaveClass(/screen/);
   await game.expectClean();
 });
 
@@ -70,8 +72,7 @@ test("答えを見ると手順が並び、次の課題では閉じる", async ({
   await expect(page.locator("#sol li")).toHaveCount(3);
   await expect(page.locator("#sol li").first()).toHaveText(/行.*列.*マゼンタ/);
 
-  await page.click('.tab[data-mode="free"]');   // 難易度は「自由」でだけ出す
-  await page.click('.seg button[data-k="3"]');
+  await page.click("#reroll");
   await expect(page.locator("#peek")).toHaveAttribute("aria-pressed", "false");
   await expect(page.locator("#sol")).toBeHidden();
   await game.expectClean();
@@ -82,7 +83,6 @@ test("表示設定は次に開いたときも残る", async ({ page }) => {
   await openSettings(page);
   await page.click('.seg button[data-mark="digits"]');
   await page.click('.seg button[data-pal="pastel"]');
-  await page.click('.seg button[data-crt="off"]');
 
   await page.reload();
   await expect(page.locator('.seg button[data-mark="digits"]')).toHaveAttribute("aria-pressed", "true");
@@ -100,15 +100,14 @@ test("練習の続きから再開する", async ({ page }) => {
 });
 
 test("記録を消すと練習の1面目に戻る", async ({ page }) => {
-  const game = await openGame(page, { reached: STAGE.内側の四隅, totals: { "6": 12 } });
-  await openSettings(page);
-  await expect(page.locator("#saveInfo")).toHaveText("保存できます");
+  const game = await openGame(page, { reached: STAGE.内側の四隅, cleared: [true, true, true] });
+  await expect(page.locator("#wipe")).toBeEnabled();
 
   await page.click("#wipe");
   await expect(status(page)).toContainText("記録を消しました");
   await expect(par(page)).toHaveText("1");
-  await expect(page.locator('#tallyList dt:text-is("ふつう") + .val'))
-    .toContainText("0", "通算も 0 に戻る");
+  await expect(page.locator('#tallyList dt:text-is("練習") + .val'))
+    .toContainText("0", "達成数も 0 に戻る");
 
   await page.reload();
   await expect(status(page)).toContainText("練習 1 / 21", "消したことが保存されている");
@@ -135,30 +134,17 @@ test("ズレを示すは、課題をまたいでも開き直しても残る", as
   await expect(page.locator("#diff")).toHaveAttribute("aria-pressed", "true", "他の設定と同じく保存される");
   expect(await page.locator("#board .miss.show").count()).toBeGreaterThan(0, "描画にも反映される");
 
-  await page.click('.tab[data-mode="free"]');   // 難易度は「自由」でだけ出す
-  await page.click('.seg button[data-k="3"]');
+  await page.click("#reroll");
   await expect(page.locator("#diff")).toHaveAttribute("aria-pressed", "true", "課題を変えても消えない");
   await game.expectClean();
 });
 
-test("別の課題ボタンは、いまの遊び方に合わせて振る舞う", async ({ page }) => {
+test("この面をやり直すと、同じ面が白紙に戻る", async ({ page }) => {
   const game = await openGame(page, { reached: STAGE.三つの重なり });
-  await expect(page.locator("#reroll")).toHaveText("この面をやり直す");
-
   await press(page, 6);
   await page.click("#reroll");
   await expect(page.locator("#board .cell.lit")).toHaveCount(0, "同じ面を白紙からやり直す");
   await expect(status(page)).toContainText("練習 11 / 21");
-
-  await page.click('.tab[data-mode="free"]');   // 難易度は「自由」でだけ出す
-  await page.click('.seg button[data-k="6"]');
-  await expect(page.locator("#reroll")).toHaveText("別の課題");
-  const 出題 = () => page.locator("#proof").getAttribute("aria-label")
-    .then(() => page.evaluate(() =>
-      [...document.querySelectorAll("#proof .cell")].map(c => c.getAttribute("aria-label")).join("|")));
-  const 前 = await 出題();
-  await page.click("#reroll");
-  expect(await 出題()).not.toBe(前, "別の盤面に差し替わる");
   await game.expectClean();
 });
 

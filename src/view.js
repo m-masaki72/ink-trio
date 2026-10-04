@@ -2,7 +2,7 @@
 
 import { N, SZ, M, Y, B, NAME } from "./rules.js";
 import { contrastOn } from "./palette.js";
-import { MODES, clearedCount, gainedToday } from "./tally.js";
+import { clearedCount, gainedToday } from "./tally.js";
 
 const LETTERS = ["M", "Y", "B"];
 
@@ -166,7 +166,7 @@ export function renderDeck({ blob, name, rest }, { remaining, nextBit, pal, solv
 const nextBitIndex = bit => [M, Y, B].indexOf(bit);
 
 export function renderTally(list, note,
-  { cleared, totals, today, stageCount, canSave, days = 0, dailyToday = false, rushBest = null }) {
+  { cleared, today, stageCount, canSave, days = 0, dailyToday = false, rushBest = null }) {
   list.innerHTML = "";
 
   const row = (label, value, unit, gain = "") => {
@@ -190,15 +190,9 @@ export function renderTally(list, note,
   row("日刊", days, " 日", dailyToday ? "+1" : "");
   row("時間走", rushBest ? rushBest.solved : 0, " 問");
 
-  for (const m of MODES) {
-    const g = today[m.k] | 0;
-    row(
-      m.label,
-      m.k === "t" ? clearedCount(cleared) : (totals[m.k] | 0),
-      m.k === "t" ? ` / ${stageCount} 面` : " 回",
-      g > 0 ? `+${g}` : "",        // 0 は出さない。増えたときだけ知らせる
-    );
-  }
+  const g = today.t | 0;
+  // 0 は出さない。増えたときだけ知らせる
+  row("練習", clearedCount(cleared), ` / ${stageCount} 面`, g > 0 ? `+${g}` : "");
 
   const gained = gainedToday(today);
   note.textContent = !canSave

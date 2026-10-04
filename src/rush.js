@@ -7,7 +7,6 @@ import { pickInBand } from "./puzzles.js";
 
 export const RUSH_LEVEL = 10;
 export const RUSH_MS = 300000;      // 5分
-export const RUNS_PER_DAY = 3;      // 記録に残る走行。これを超えたぶんは練習
 
 // 号に紐づかないので素の乱数で引く。帯は日刊と同じものを使う。
 // 難度が揃っていないと、問数で比べる意味がなくなる

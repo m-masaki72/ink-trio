@@ -10,12 +10,11 @@ export const KNOWN_VERSIONS = [1, 2, 3];
 export const MAX_SETS = 400;
 export const MAX_MS = 86400000;
 
-export const LEVELS = [3, 6, 10];
 export const MARK_MODES = ["bars", "letters", "digits", "none"];
 
 // 参照を共有しないよう、入れ物は毎回作る
 export const freshDaily = () => ({ days: 0, lastDay: "", clock: true, send: false, sets: {} });
-export const freshRush = () => ({ day: "", count: 0, today: null, best: null });
+export const freshRush = () => ({ best: null });
 
 // DEFAULTS の可変フィールドを呼び出し側で並べ直すと、項目を足すたび同期義務が増える
 export const freshState = () => ({
@@ -23,8 +22,8 @@ export const freshState = () => ({
 });
 
 export const DEFAULTS = {
-  reached: 0, cleared: [], tutorialDone: false, level: 6,
-  markMode: "none", palName: "vivid", soundOn: true, crtOn: true, showDiff: false,
+  reached: 0, cleared: [], tutorialDone: false,
+  markMode: "none", palName: "vivid", soundOn: true, showDiff: false,
   totals: {}, today: {}, dayKey: "", daily: freshDaily(), rush: freshRush(),
 };
 
@@ -80,15 +79,7 @@ function sanitizeScore(raw) {
   return { solved: whole(o.solved, 9999), ms: whole(o.ms, MAX_MS) };
 }
 
-function sanitizeRush(raw) {
-  const r = plainObject(raw);
-  return {
-    day: typeof r.day === "string" ? r.day.slice(0, 10) : "",
-    count: whole(r.count, 99),
-    today: sanitizeScore(r.today),
-    best: sanitizeScore(r.best),
-  };
-}
+const sanitizeRush = raw => ({ best: sanitizeScore(plainObject(raw).best) });
 
 function sanitizeDaily(raw, cellCount, maxMoves, slotCount) {
   const d = plainObject(raw);
@@ -110,11 +101,11 @@ export function sanitize(raw,
     reached: clamp(d.reached | 0, 0, stageCount - 1),
     cleared: Array.isArray(d.cleared) ? d.cleared : [],
     tutorialDone: !!d.done,
-    level: LEVELS.includes(d.level) ? d.level : DEFAULTS.level,
     markMode: MARK_MODES.includes(d.marks) ? d.marks : DEFAULTS.markMode,
-    palName: paletteNames.includes(d.pal) ? d.pal : DEFAULTS.palName,
+    // 質感は配色と組になった。フラットを選んでいた人は、ブラウン管の無い側へ寄せる
+    palName: d.crt === false ? "pastel"
+      : paletteNames.includes(d.pal) ? d.pal : DEFAULTS.palName,
     soundOn: d.snd !== false,
-    crtOn: d.crt !== false,
     showDiff: d.diff === true,
     totals: plainObject(d.totals),
     today: plainObject(d.today),
@@ -128,8 +119,8 @@ export function serialize(s) {
   return {
     v: SAVE_VERSION,
     reached: s.reached, cleared: s.cleared, done: s.tutorialDone,
-    level: s.level, marks: s.markMode, pal: s.palName,
-    snd: s.soundOn, crt: s.crtOn, diff: s.showDiff,
+    marks: s.markMode, pal: s.palName,
+    snd: s.soundOn, diff: s.showDiff,
     totals: s.totals, day: s.dayKey, today: s.today,
     daily: s.daily, rush: s.rush,
   };

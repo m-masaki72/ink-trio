@@ -39,20 +39,23 @@ test("日刊のタブを開くと今日の号が出る", async ({ page }) => {
   await game.expectClean();
 });
 
-// 日刊は難易度が決まっている。選ぶ余地を出すと意味が変わる
-test("日刊と練習では難易度ボタンを出さない", async ({ page }) => {
-  await openGame(page, { done: true });
-  await expect(page.locator("#levels")).toBeVisible();
+test("練習を終えた人は今日の号から始まる", async ({ page }) => {
+  const game = await openGame(page, { done: true });
+  await expect(page.locator('.tab[data-mode="daily"]')).toHaveAttribute("aria-pressed", "true");
+  await expect(page.locator("#issueNo")).toHaveText(`第${今日の号()}号`);
+  await game.expectClean();
+});
 
-  await page.click('.tab[data-mode="daily"]');
-  await expect(page.locator("#levels")).toBeHidden();
+// 日刊と時間走の盤は引き直せない。引き直せると、号や走行の意味が変わる
+test("やり直しのボタンは練習でだけ出す", async ({ page }) => {
+  await openGame(page, { done: true });
+  await expect(page.locator("#reroll")).toBeHidden();
+
+  await page.click('.tab[data-mode="rush"]');
   await expect(page.locator("#reroll")).toBeHidden();
 
   await page.click('.tab[data-mode="tutorial"]');
-  await expect(page.locator("#levels")).toBeHidden();
-
-  await page.click('.tab[data-mode="free"]');
-  await expect(page.locator("#levels")).toBeVisible();
+  await expect(page.locator("#reroll")).toBeVisible();
 });
 
 test("一問ごとに次へ進み、済みの数が増える", async ({ page }) => {

@@ -2,7 +2,7 @@
 
 import { PAL, PALETTE_NAMES } from "./palette.js";
 import { openBackend, createSaveFile } from "./storage.js";
-import { TUTORIAL, generateSequence } from "./puzzles.js";
+import { TUTORIAL } from "./puzzles.js";
 import { createGame, PRESSED, BLOCKED, UNDONE } from "./game.js";
 import { createAudio } from "./audio.js";
 import { SZ, MAX_MOVES } from "./rules.js";
@@ -10,7 +10,7 @@ import {
   SHAPE, issueOf, issueSet, blankRecord, solvedCount, totalMs, nextSlot, mergeSlot, bumpDays,
 } from "./daily.js";
 import { boardText, shareText, formatDuration, clockText } from "./share.js";
-import { RUSH_MS, RUNS_PER_DAY, createRun, better } from "./rush.js";
+import { RUSH_MS, createRun, better } from "./rush.js";
 import { registerServiceWorker } from "./pwa.js";
 import { dayKeyOf, rollDay, recordClear } from "./tally.js";
 import {
@@ -25,8 +25,8 @@ const el = {
   peek: $("peek"), count: $("count"), finish: $("finish"), chips: $("chips"),
   ink0: $("ink0"), inkRest: $("inkRest"), undoKey: $("undoKey"), opts: $("opts"),
   optPanel: $("optpanel"), tallyList: $("tallyList"), tallyNote: $("tallyNote"),
-  saveInfo: $("saveInfo"), wipe: $("wipe"), reroll: $("reroll"),
-  deck: document.querySelector(".deck"), levels: $("levels"),
+  wipe: $("wipe"), reroll: $("reroll"),
+  deck: document.querySelector(".deck"),
   issuebar: $("issuebar"), issueNo: $("issueNo"), issueStep: $("issueStep"),
   issueClock: $("issueClock"), issuePrev: $("issuePrev"), issueNext: $("issueNext"),
   shareRow: $("shareRow"), shareCopy: $("shareCopy"), shareX: $("shareX"),
@@ -67,7 +67,7 @@ let winMsg = "";
 let solvedAt = 0;
 let advanceTimer = null;
 let usedAid = false;      // この課題で補助を使ったか
-let playMode = "free";    // "daily" | "tutorial" | "free"
+let playMode = "tutorial";    // "daily" | "tutorial" | "rush"
 let issue = 0;            // いま開いている号
 let slot = 0;             // 号のなかの何問目
 let issueBoards = [];
@@ -79,6 +79,8 @@ let review = [];          // パスした盤の見直し待ち
 let tickTimer = null;
 
 const pal = () => PAL[state.palName];
+// 見た目は配色と質感を組で切り替える。設定の段を一つに絞るため
+const applyLook = () => document.documentElement.classList.toggle("screen", state.palName === "vivid");
 const save = () => saveFile.save(state);
 
 const cells = buildGrid(el.board, { interactive: true, onPress });
@@ -113,7 +115,7 @@ function setStatus(text, win) {
 function showTally() {
   state = rollDay(state, dayKeyOf());
   renderTally(el.tallyList, el.tallyNote, {
-    cleared: state.cleared, totals: state.totals, today: state.today,
+    cleared: state.cleared, today: state.today,
     stageCount: TUTORIAL.length, canSave: saveFile.available,
     days: state.daily.days, dailyToday: state.daily.lastDay === dayKeyOf(),
     rushBest: state.rush.best,
@@ -164,7 +166,7 @@ function loadDailySlot(n) {
   slot = Math.min(Math.max(n, 0), SHAPE.length - 1);
   const here = issueBoards[slot];
   start(here.seq);
-  setStatus(`第${issue}号 ${slot + 1}問目（${here.level}手）。${TEXT.hint}`, false);
+  setStatus(`第${issue}号 ${slot + 1}問目（${here.level}手）。${state.tutorialDone ? "" : TEXT.hint}`, false);
 }
 
 function openIssue(n) {
@@ -214,28 +216,15 @@ function setMode(m) {
     stopRushClock();
     run = null;
     review = [];
-    rollRushDay();
     setStatus(`時間走です。「走る」で ${RUSH_MS / 60000}分の走行が始まります。`, false);
     drawBars();
     return;
   }
-  if (m === "daily") {
-    openIssue(issue || todayIssue());
-  } else if (m === "tutorial") {
-    loadStage(stage);
-  } else {
-    newGame(state.level);
-  }
+  if (m === "daily") openIssue(issue || todayIssue());
+  else loadStage(stage);
 }
 
 /* ---------- 時間走 ---------- */
-
-// 日付が変わったら今日の走行回数を戻す。通算のベストには手を触れない
-function rollRushDay() {
-  const today = dayKeyOf();
-  if (state.rush.day === today) return;
-  state = { ...state, rush: { ...state.rush, day: today, count: 0, today: null } };
-}
 
 function stopRushClock() { clearInterval(rushTimer); rushTimer = null; }
 
@@ -259,16 +248,13 @@ function drawRushBar() {
   el.rushStart.hidden = running;
   el.rushStart.textContent = run ? "もう一度走る" : "走る";
   el.rushReview.hidden = running || review.length === 0;
-  const rest = Math.max(0, RUNS_PER_DAY - state.rush.count);
-  const best = state.rush.best ? `　自己最高 ${state.rush.best.solved}問` : "";
-  const note = (rest > 0 ? `記録に残せる走行 あと${rest}回` : "練習走行") + best;
+  const note = state.rush.best ? `自己最高 ${state.rush.best.solved}問` : "";
   if (note !== el.rushNote.textContent) el.rushNote.textContent = note;
 }
 
 // 表示の切替はここ一箇所。モードを足すたびに複数の関数を触らないため
 function drawBars() {
   setSeg("data-mode", playMode);
-  el.levels.hidden = playMode !== "free";
   if (playMode !== "daily") stopClock();
   if (playMode !== "rush") stopRushClock();
   drawIssueBar();
@@ -282,7 +268,6 @@ function nextRushBoard(seq) {
 }
 
 function startRush() {
-  rollRushDay();
   review = [];
   run = createRun({ now: () => performance.now() });
   const seq = run.start();
@@ -308,21 +293,12 @@ function endRush() {
   const res = run.result();
   review = res.passed;
 
-  rollRushDay();
-  const r = state.rush;
-  const counts = r.count < RUNS_PER_DAY;
   const score = { solved: res.solved, ms: res.ms };
-  state = { ...state, rush: {
-    ...r,
-    count: counts ? r.count + 1 : r.count,
-    today: counts && better(score, r.today) ? score : r.today,
-    best: counts && better(score, r.best) ? score : r.best,
-  } };
+  if (better(score, state.rush.best)) state = { ...state, rush: { ...state.rush, best: score } };
   save();
   showTally();
 
-  setStatus(`時間走 おわり。${res.solved}問`
-    + (counts ? `（${formatDuration(res.ms)}）。` : "。記録には残しません（練習走行）。")
+  setStatus(`時間走 おわり。${res.solved}問（${formatDuration(res.ms)}）。`
     + (review.length ? `　パスした${review.length}問を見直せます。` : ""), true);
   drawBars();
 }
@@ -354,21 +330,12 @@ function start(cellSeq) {
   usedAid = state.showDiff;
   el.count.textContent = "";
   el.deck.classList.remove("spent");
-  el.reroll.textContent = playMode === "tutorial" ? "この面をやり直す" : "別の課題";
-  el.reroll.hidden = playMode === "daily" || playMode === "rush";
+  el.reroll.hidden = playMode !== "tutorial";
   el.shareRow.hidden = true;
   el.shareNote.textContent = "";
   drawBars();
   renderChips(el.chips, pal());
   draw();
-}
-
-function newGame(level) {
-  if (level) state = { ...state, level };
-  closeFinish();
-  save();
-  start(generateSequence(state.level));
-  setStatus(TEXT.hint, false);
 }
 
 function loadStage(n) {
@@ -377,28 +344,26 @@ function loadStage(n) {
   if (n > state.reached) { state = { ...state, reached: n }; save(); }
   const st = TUTORIAL[n];
   start(st.s);
-  setStatus(`練習 ${n + 1} / ${TUTORIAL.length}「${st.t}」　${st.h}`, false);
+  // 操作の説明は1面目でだけ添える。毎回出すと、肝心の課題文が埋もれる
+  setStatus(`練習 ${n + 1} / ${TUTORIAL.length}「${st.t}」　${st.h}${n === 0 ? TEXT.hint : ""}`, false);
 }
 
-// 練習を終えたら、ふつうの出題へ送り出す
+// 練習を終えたら、日刊へ送り出す
 function endTutorial() {
   state = { ...state, tutorialDone: true };
   save();
-  playMode = "free";
-  setSeg("data-k", "6");
-  newGame(6);
-  setStatus("練習はここまでです。ここからは毎回ちがう課題が出ます。", false);
+  setMode("daily");
+  if (playMode === "daily") setStatus(`練習はここまでです。ここからは日刊、第${issue}号です。`, false);
 }
 
 function goNext() {
-  // 走行の外（見直し）で自由出題へ落とすと、時間走のまま迷子になる
+  // 走行の外（見直し）で練習へ落とすと、時間走のまま迷子になる
   if (playMode === "rush") return drawBars();
   if (playMode === "daily") {
     const next = nextSlot(recordOf(issue));
     // 済んだ号は順にめくれる。「過去の号はいつでも遊べる」という約束のため
     return loadDailySlot(next < 0 ? (slot + 1) % SHAPE.length : next);
   }
-  if (playMode !== "tutorial") return newGame();
   if (stage + 1 < TUTORIAL.length) loadStage(stage + 1);
   else endTutorial();
 }
@@ -433,8 +398,7 @@ function onPress(idx) {
 }
 
 function onSolved() {
-  const modeKey = playMode === "daily" ? String(issueBoards[slot].level)
-    : playMode === "tutorial" ? "t" : String(state.level);
+  const modeKey = playMode === "daily" ? String(issueBoards[slot].level) : "t";
   if (playMode === "tutorial") {
     const cleared = state.cleared.slice();
     cleared[stage] = true;
@@ -586,10 +550,7 @@ el.peek.addEventListener("click", () => {
   el.sol.classList.toggle("open", on);
 });
 
-el.reroll.addEventListener("click", () => {
-  if (playMode === "tutorial") loadStage(stage);
-  else newGame();
-});
+el.reroll.addEventListener("click", () => loadStage(stage));
 
 function segWire(selector, apply) {
   const buttons = document.querySelectorAll(selector);
@@ -608,9 +569,9 @@ function setSeg(attr, value) {
   }
 }
 
-segWire(".seg button[data-k]", b => newGame(Number(b.dataset.k)));
 segWire(".seg button[data-pal]", b => {
   state = { ...state, palName: b.dataset.pal };
+  applyLook();
   renderChips(el.chips, pal());
   draw();
   save();
@@ -618,11 +579,6 @@ segWire(".seg button[data-pal]", b => {
 segWire(".seg button[data-mark]", b => {
   state = { ...state, markMode: b.dataset.mark };
   draw();
-  save();
-});
-segWire(".seg button[data-crt]", b => {
-  state = { ...state, crtOn: b.dataset.crt === "on" };
-  document.documentElement.classList.toggle("screen", state.crtOn);
   save();
 });
 segWire(".seg button[data-snd]", b => {
@@ -641,7 +597,6 @@ el.opts.addEventListener("click", () => {
 el.wipe.addEventListener("click", () => {
   saveFile.clear();
   state = saveFile.load();
-  showSaveInfo();
   showTally();
   playMode = "tutorial";
   issue = 0;
@@ -678,30 +633,21 @@ document.addEventListener("keydown", e => {
   }
 });
 
-function showSaveInfo() {
-  el.saveInfo.textContent = saveFile.available ? "保存できます" : "この環境では保存できません";
-  el.wipe.disabled = !saveFile.available;
-}
 
 /* ---------- 起動 ---------- */
 
 audio.setEnabled(state.soundOn);
-document.documentElement.classList.toggle("screen", state.crtOn);
-setSeg("data-crt", state.crtOn ? "on" : "off");
+applyLook();
 setSeg("data-pal", state.palName);
 setSeg("data-mark", state.markMode);
 setSeg("data-snd", state.soundOn ? "on" : "off");
 el.diff.setAttribute("aria-pressed", String(state.showDiff));
 
-playMode = state.tutorialDone ? "free" : "tutorial";
 stage = state.reached;
-if (state.tutorialDone) {
-  setSeg("data-k", state.level);
-  newGame(state.level);
-} else {
-  loadStage(state.reached);
-}
-showSaveInfo();
+// 練習を終えた人は今日の号から。号の無い日付（端末の時計の誤り）では練習へ
+if (state.tutorialDone && todayIssue()) setMode("daily");
+else loadStage(stage);
+el.wipe.disabled = !saveFile.available;
 showTally();
 
 // 圏外でも開けるようにする。使えない環境では何も起きない

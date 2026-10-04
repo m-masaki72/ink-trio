@@ -63,11 +63,11 @@ test.describe("タッチ端末", () => {
   test.use(プロファイル("iPhone 14"));
 
   test("右クリックのない端末には、そう案内しない", async ({ page }) => {
-    await openGame(page, { done: true, level: 3 });
+    await openGame(page, {});                   // 操作の案内は練習の1面目に出る
     await expect(page.locator("#status")).toContainText("タップ");
     await expect(page.locator("#status")).not.toContainText("右クリック");
 
-    for (const i of [0, 1, 2]) await page.tap(`#board .cell[data-i="${i}"]`);
+    await page.tap('#board .cell[data-i="0"]');   // 揃わない手で1手を使い切る
     await page.tap('#board .cell[data-i="24"]');
     await expect(page.locator("#status")).toContainText("一手もどす");
     await expect(page.locator("#status")).not.toContainText("右クリック");

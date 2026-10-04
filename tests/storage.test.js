@@ -1,14 +1,14 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import {
-  SAVE_KEY, SAVE_VERSION, KNOWN_VERSIONS, DEFAULTS, LEVELS, MARK_MODES,
+  SAVE_KEY, SAVE_VERSION, KNOWN_VERSIONS, DEFAULTS, MARK_MODES,
   MAX_SETS, MAX_MS, freshDaily, freshRush, freshState,
   sanitize, serialize, openBackend, createSaveFile,
 } from "../src/storage.js";
 
 const OPTS = { stageCount: 21, paletteNames: ["vivid", "pastel"] };
 const full = extra => ({ v: SAVE_VERSION, reached: 0, cleared: [], done: false,
-  level: 6, marks: "none", pal: "vivid", snd: true, crt: true,
+  marks: "none", pal: "vivid", snd: true,
   totals: {}, day: "", today: {}, ...extra });
 
 function fakeBackend(initial) {
@@ -55,10 +55,6 @@ test("前の版の保存を読んでも進行度は消えない", () => {
 });
 
 test("選択肢のある項目は許可リストで照合する", () => {
-  for (const lv of LEVELS) assert.equal(sanitize(full({ level: lv }), OPTS).level, lv);
-  assert.equal(sanitize(full({ level: 7 }), OPTS).level, DEFAULTS.level);
-  assert.equal(sanitize(full({ level: "6" }), OPTS).level, DEFAULTS.level);
-
   for (const mk of MARK_MODES) assert.equal(sanitize(full({ marks: mk }), OPTS).markMode, mk);
   assert.equal(sanitize(full({ marks: "<img onerror=x>" }), OPTS).markMode, DEFAULTS.markMode);
 
@@ -81,11 +77,17 @@ test("ズレ表示は既定がオフで、他の設定と同じく保存され�
   assert.equal(serialize(sanitize(full({ diff: true }), OPTS)).diff, true);
 });
 
-test("音と画面は既定がオン、明示的な false だけ効く", () => {
+test("音は既定がオン、明示的な false だけ効く", () => {
   assert.equal(sanitize(full({ snd: undefined }), OPTS).soundOn, true);
   assert.equal(sanitize(full({ snd: false }), OPTS).soundOn, false);
   assert.equal(sanitize(full({ snd: 0 }), OPTS).soundOn, true);
-  assert.equal(sanitize(full({ crt: false }), OPTS).crtOn, false);
+});
+
+// 質感の設定は配色に畳んだ。フラットを選んでいた人に走査線を戻さない
+test("旧版でフラットを選んでいた人は、やわらかな見た目で開く", () => {
+  assert.equal(sanitize(full({ pal: "vivid", crt: false }), OPTS).palName, "pastel");
+  assert.equal(sanitize(full({ pal: "vivid", crt: true }), OPTS).palName, "vivid");
+  assert.equal(sanitize(full({ pal: "vivid", crt: 0 }), OPTS).palName, "vivid", "明示的な false だけ効く");
 });
 
 test("__proto__ を含む保存値でも汚染されない", () => {
@@ -96,8 +98,8 @@ test("__proto__ を含む保存値でも汚染されない", () => {
 
 test("書いて読むと同じ状態に戻る", () => {
   const file = createSaveFile(fakeBackend(), OPTS);
-  const state = sanitize(full({ reached: 7, level: 10, marks: "digits", pal: "pastel",
-    snd: false, crt: false, totals: { "6": 2 }, today: { "6": 1 }, day: "2026-09-11" }), OPTS);
+  const state = sanitize(full({ reached: 7, marks: "digits", pal: "pastel",
+    snd: false, totals: { "6": 2 }, today: { "6": 1 }, day: "2026-09-11" }), OPTS);
   assert.equal(file.save(state), true);
   assert.deepEqual(file.load(), state);
 });
@@ -139,7 +141,7 @@ test("openBackend は使えない環境で null を返す", () => {
 
 test("serialize は保存する項目だけを書き出す", () => {
   const keys = Object.keys(serialize(sanitize(full(), OPTS))).sort();
-  assert.deepEqual(keys, ["cleared", "crt", "daily", "day", "diff", "done", "level", "marks", "pal", "reached", "rush", "snd", "today", "totals", "v"]);
+  assert.deepEqual(keys, ["cleared", "daily", "day", "diff", "done", "marks", "pal", "reached", "rush", "snd", "today", "totals", "v"]);
 });
 
 /* ---------- 日刊（v3）---------- */
@@ -238,26 +240,27 @@ test("走っていなければ記録は空", () => {
 });
 
 test("走行の記録は数として読み直す", () => {
-  const r = sanitize(withRush({ day: "2026-09-14", count: 2,
+  const r = sanitize(withRush({ best: { solved: 9, ms: 280000 } }), OPTS).rush;
+  assert.deepEqual(r, { best: { solved: 9, ms: 280000 } });
+});
+
+// 回数制限のあった版の保存値。自己最高だけを引き継ぐ
+test("旧版の走行回数は読み捨てる", () => {
+  const r = sanitize(withRush({ day: "2026-09-14", count: 3,
     today: { solved: 7, ms: 240000 }, best: { solved: 9, ms: 280000 } }), OPTS).rush;
-  assert.equal(r.day, "2026-09-14");
-  assert.equal(r.count, 2);
-  assert.deepEqual(r.today, { solved: 7, ms: 240000 });
-  assert.deepEqual(r.best, { solved: 9, ms: 280000 });
+  assert.deepEqual(r, { best: { solved: 9, ms: 280000 } });
 });
 
 // 同一オリジンの別ページから桁の大きい値を入れられても、表示が壊れないようにする
 test("走行の記録も値域で止める", () => {
-  const r = sanitize(withRush({ count: 1e9,
-    today: { solved: 1e9, ms: 1e15 }, best: "こわれている" }), OPTS).rush;
-  assert.equal(r.count, 99);
-  assert.deepEqual(r.today, { solved: 9999, ms: MAX_MS });
-  assert.equal(r.best, null, "数でないものは走っていない扱い");
+  assert.deepEqual(sanitize(withRush({ best: { solved: 1e9, ms: 1e15 } }), OPTS).rush.best,
+    { solved: 9999, ms: MAX_MS });
+  assert.equal(sanitize(withRush({ best: "こわれている" }), OPTS).rush.best, null,
+    "数でないものは走っていない扱い");
 });
 
 test("時間走も書いて読み戻して変わらない", () => {
-  const rush = { day: "2026-09-14", count: 3,
-    today: { solved: 5, ms: 100000 }, best: { solved: 8, ms: 250000 } };
+  const rush = { best: { solved: 8, ms: 250000 } };
   const once = sanitize(withRush(rush), OPTS);
   const twice = sanitize({ ...serialize(once), v: SAVE_VERSION }, OPTS);
   assert.deepEqual(twice.rush, once.rush);

@@ -30,7 +30,7 @@ test("時間走のタブは、走り出す前は満タンで待っている", as
   await expect(page.locator("#rushStart")).toBeVisible();
   await expect(page.locator("#rushPass")).toBeHidden();
   await expect(page.locator("#rushQuit")).toBeHidden();
-  await expect(page.locator("#rushNote")).toContainText("あと3回");
+  await expect(page.locator("#rushNote")).toHaveText("", "走る前は自己最高もない");
   await expect(status(page)).toContainText("「走る」で 5分の走行が始まります");
   await game.expectClean();
 });
@@ -84,7 +84,7 @@ test("やめると記録が残り、パスした問を見直せる", async ({ pa
   await expect(status(page)).toContainText("時間走 おわり。1問");
   await expect(status(page)).toContainText("パスした1問を見直せます");
   await expect(page.locator("#rushReview")).toBeVisible();
-  await expect(page.locator("#rushNote")).toContainText("あと2回");
+  await expect(page.locator("#rushNote")).toContainText("自己最高 1問");
   await expect(page.locator('#tallyList dt:text-is("時間走") + .val'))
     .toContainText("1", "自己最高が記録欄に出る");
 
@@ -94,29 +94,27 @@ test("やめると記録が残り、パスした問を見直せる", async ({ pa
   await game.expectClean();
 });
 
-test("記録に残せる走行を使い切ると練習走行になる", async ({ page }) => {
-  await openGame(page, { done: true, rush: { day: "", count: 3, today: null, best: null } });
+// 回数は数えない。何度走っても、自己最高を超えたら記録が替わる
+test("何度目の走行でも自己最高を更新できる", async ({ page }) => {
+  await openGame(page, { done: true, rush: { best: { solved: 0, ms: 1000 } } });
   await page.click('.tab[data-mode="rush"]');
-  // 日付が変わっているので回数は戻る
-  await expect(page.locator("#rushNote")).toContainText("あと3回");
-
   for (let i = 0; i < 3; i++) {
     await page.click("#rushStart");
     await page.click("#rushQuit");
   }
-  await expect(page.locator("#rushNote")).toContainText("練習走行");
+  await expect(page.locator("#rushNote")).toHaveText("自己最高 0問");
 
-  // 四回目からは記録しない
   await page.click("#rushStart");
+  await 一問さばく(page);
   await page.click("#rushQuit");
-  await expect(status(page)).toContainText("記録には残しません（練習走行）");
+  await expect(page.locator("#rushNote")).toHaveText("自己最高 1問");
 });
 
 test("ほかのタブへ移ると走行は止まる", async ({ page }) => {
   await openGame(page, { done: true });
   await page.click('.tab[data-mode="rush"]');
   await page.click("#rushStart");
-  await page.click('.tab[data-mode="free"]');
+  await page.click('.tab[data-mode="tutorial"]');
   await expect(page.locator("#rushbar")).toBeHidden();
 
   await page.click('.tab[data-mode="rush"]');
@@ -124,7 +122,7 @@ test("ほかのタブへ移ると走行は止まる", async ({ page }) => {
   await expect(page.locator("#rushStart")).toBeVisible();
 });
 
-// 見直しを解いて自由出題へ落ちると、時間走のまま難易度も引き直しも無い画面に取り残される
+// 見直しを解いて練習へ落ちると、時間走のタブのまま練習面に取り残される
 test("見直しを解いても時間走から出されない", async ({ page }) => {
   const game = await openGame(page, { done: true });
   await page.click('.tab[data-mode="rush"]');
@@ -136,13 +134,13 @@ test("見直しを解いても時間走から出されない", async ({ page }) 
   await 一問さばく(page);
   await page.waitForTimeout(3600);            // 自動遷移の頃合いを過ぎるまで待つ
 
-  // 自由出題へ落ちると最短手数が state.level（既定6手）に変わる。10手のままなら残っている
+  // 練習へ落ちると最短手数が練習面のものに変わる。10手のままなら残っている
   await expect(page.locator("#par")).toHaveText(String(RUSH_LEVEL));
   await expect(page.locator("#board .cell.lit")).not.toHaveCount(0, "解いた盤が残っている");
   await expect(page.locator('.tab[data-mode="rush"]')).toHaveAttribute("aria-pressed", "true");
   await expect(page.locator("#rushbar")).toBeVisible();
-  // 見直しは難易度別の通算に数えない（走行中は数えていないので辻褄が合わなくなる）
-  await expect(page.locator('#tallyList dt:text-is("むずかしい") + .val')).toContainText("0");
+  // 見直しは今日の刷り上がりに数えない（走行中は数えていないので辻褄が合わなくなる）
+  await expect(page.locator("#tallyNote")).toHaveText("");
   await game.expectClean();
 });
 
@@ -156,7 +154,6 @@ test("走行中に同じタブを押しても走行は続く", async ({ page }) 
   await page.click('.tab[data-mode="rush"]');
   await expect(page.locator("#rushPass")).toBeVisible("走行が続いている");
   await expect(page.locator("#rushStart")).toBeHidden();
-  await expect(page.locator("#rushNote")).toContainText("あと3回", "回数を消費していない");
 });
 
 test("日刊の結果を時間走のタブへ持ち出さない", async ({ page }) => {

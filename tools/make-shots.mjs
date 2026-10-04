@@ -32,11 +32,11 @@ const STAGE = 10;
 const ANSWER = [6, 8, 16];
 
 const saved = extra => JSON.stringify({
-  v: 3, reached: STAGE, cleared: [], done: false, level: 6,
-  marks: "none", pal: "vivid", snd: false, crt: true, diff: false,
+  v: 3, reached: STAGE, cleared: [], done: false,
+  marks: "none", pal: "vivid", snd: false, diff: false,
   totals: { t: 8, 3: 4, 6: 11, 10: 2 }, day: "", today: {},
   daily: { days: 7, lastDay: "", clock: true, send: false, sets: {} },
-  rush: { day: "", count: 1, today: null, best: { solved: 8, ms: 240000 } },
+  rush: { best: { solved: 8, ms: 240000 } },
   ...extra,
 });
 
@@ -91,7 +91,7 @@ await take("pastel.png", async page => {
   await press(page, ANSWER[0]);
   await press(page, ANSWER[1]);
   await page.waitForTimeout(400);
-}, { state: saved({ pal: "pastel", crt: false }) });
+}, { state: saved({ pal: "pastel" }) });
 
 // 日刊号。号は日付で変わるので、写真の号数も撮った日のものになる
 await take("daily.png", async page => {

@@ -268,10 +268,8 @@
   button.btn:disabled{opacity:.4;cursor:not-allowed}
   .seg{display:flex;gap:2px}
 
-  /* ---------- インク表（筐体に刷られた参照） ---------- */
-  .inkkey{margin-top:16px;padding-top:14px;display:flex;align-items:center;
-    gap:8px 16px;flex-wrap:wrap;
-    border-top:1px solid rgba(0,0,0,.34);box-shadow:0 1px 0 var(--shell-hi) inset}
+  /* ---------- インク表（遊び方の中の参照） ---------- */
+  .inkkey{margin-top:12px;display:flex;align-items:center;gap:8px 16px;flex-wrap:wrap}
   .inkkey-label{font-size:10.5px;font-weight:700;letter-spacing:.2em;color:#cdc2ae;
     text-shadow:0 1px 1px rgba(0,0,0,.5)}
 
@@ -280,7 +278,6 @@
     padding:14px 16px;margin:12px 0 0;display:grid;gap:12px}
   .opt-row{display:flex;align-items:center;gap:12px;flex-wrap:wrap}
   .opt-row > span{font-size:12.5px;color:var(--dim);min-width:3.2em}
-  #saveInfo{min-width:auto}
   #opts::after{content:"　＋";font-size:11px;opacity:.6}
   #opts[aria-expanded="true"]::after{content:"　−"}
 
@@ -303,6 +300,7 @@
     color:var(--amber);text-shadow:0 0 10px rgba(242,180,92,.4);margin:0;justify-self:end}
   .tally .gain:empty{text-shadow:none}
   .tally .note{margin:10px 0 0;font-size:12px;color:var(--dim)}
+  .tally #wipe{margin-top:12px}
 
   .chips{display:flex;flex-wrap:wrap;gap:7px 13px}
   .chip{display:flex;align-items:center;gap:6px;font-size:11.5px;color:#cdc2ae;
