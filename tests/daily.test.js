@@ -1,10 +1,10 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import {
-  EPOCH, SHAPE, issueOf, seeded, puzzleOf, issueSet,
+  EPOCH, SHAPE, HUMAN_FROM, issueOf, seeded, puzzleOf, issueSet,
   blankRecord, solvedCount, totalMs, nextSlot, isComplete, mergeSlot, bumpDays,
 } from "../src/daily.js";
-import { BANDS, buildPuzzle, featuresOf } from "../src/puzzles.js";
+import { BANDS, HUMAN_BANDS, buildPuzzle, featuresOf, inBand } from "../src/puzzles.js";
 
 const 号数 = 200;
 
@@ -66,6 +66,15 @@ test("選別が効いて、すべての問が帯に収まる", () => {
   }
 });
 
+test("切り替え号からは、人の手応えの帯にも収まる", () => {
+  for (let n = HUMAN_FROM; n < HUMAN_FROM + 号数; n++) {
+    for (const { level, seq } of issueSet(n)) {
+      assert.equal(buildPuzzle(seq).par, level, `第${n}号 ${level}手の最短手数`);
+      assert.ok(inBand(seq, level, HUMAN_BANDS), `第${n}号 ${level}手が帯の外`);
+    }
+  }
+});
+
 test("帯を渡さなければ選別しない", () => {
   const 素 = puzzleOf(7, 0, 6, {});
   const 選別 = puzzleOf(7, 0, 6);
@@ -96,6 +105,21 @@ test("代表号の盤面を固定する", () => {
     [23, 22, 11, 15, 21, 6],
     [5, 18, 23, 22, 4, 22, 10, 20, 5, 23],
     [0, 1, 13, 3, 21, 10, 4, 20, 15, 14],
+  ]);
+  // 旧い帯の最後の号と、人の手応えで選んだ最初の号。境目を動かすとここが落ちる
+  assert.deepEqual(issueSet(HUMAN_FROM - 1).map(x => x.seq), [
+    [4, 21, 22],
+    [19, 20, 10, 6, 23, 20],
+    [0, 21, 9, 2, 12, 6],
+    [13, 17, 11, 3, 11, 22, 18, 15, 24, 3],
+    [13, 14, 24, 21, 5, 23, 23, 14, 15, 5],
+  ]);
+  assert.deepEqual(issueSet(HUMAN_FROM).map(x => x.seq), [
+    [15, 13, 0],
+    [20, 16, 8, 23, 12, 22],
+    [4, 1, 22, 9, 24, 1],
+    [16, 9, 0, 4, 1, 7, 6, 17, 5, 0],
+    [13, 22, 16, 1, 10, 14, 15, 3, 6, 21],
   ]);
 });
 

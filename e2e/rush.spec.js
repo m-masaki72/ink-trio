@@ -35,7 +35,7 @@ test("時間走のタブは、走り出す前は満タンで待っている", as
   await game.expectClean();
 });
 
-test("走り出すと十手の盤が出て、時計が減る", async ({ page }) => {
+test("走り出すと七手の盤が出て、時計が減る", async ({ page }) => {
   const game = await openGame(page, { done: true });
   await page.click('.tab[data-mode="rush"]');
   await page.click("#rushStart");
@@ -134,7 +134,7 @@ test("見直しを解いても時間走から出されない", async ({ page }) 
   await 一問さばく(page);
   await page.waitForTimeout(3600);            // 自動遷移の頃合いを過ぎるまで待つ
 
-  // 練習へ落ちると最短手数が練習面のものに変わる。10手のままなら残っている
+  // 練習へ落ちると最短手数が練習面のものに変わる。時間走の手数のままなら残っている
   await expect(page.locator("#par")).toHaveText(String(RUSH_LEVEL));
   await expect(page.locator("#board .cell.lit")).not.toHaveCount(0, "解いた盤が残っている");
   await expect(page.locator('.tab[data-mode="rush"]')).toHaveAttribute("aria-pressed", "true");

@@ -1,7 +1,9 @@
 // 出題。押すマスの列だけで盤面も手順も決まる（色は順番から自動で決まる）ので、
 // 面の定義はマス番号の配列ひとつで足りる。
 
-import { SZ, SEQ, stamp, targetOf, trueMinimum } from "./rules.js";
+import {
+  SZ, SEQ, MASK, KERNEL, stamp, targetOf, trueMinimum, solvePlane, popcount, planesOf, slotCounts,
+} from "./rules.js";
 
 export const TUTORIAL = [
   { t: "中心をひと押し", h: "盤の中心をひとつ押すだけ。周りの8マスにも同時にインクが乗ります。", s: [12] },
@@ -54,19 +56,65 @@ export const BANDS = {
   6: { inked: [15, 23], colors: [4, 7] },
   10: { inked: [17, 24], colors: [5, 7] },
 };
-export const MAX_SHIFT = 50;
+// 人の手応えでも揃えた帯。第 HUMAN_FROM 号からの日刊と、時間走（7手）が使う。
+// 日刊に効くので、ここを触ると切り替え以降の号が別の盤面に化ける
+export const HUMAN_BANDS = {
+  3: BANDS[3],
+  6: { ...BANDS[6], pad: [0, 0], cancel: [1, 4] },
+  7: { inked: [15, 23], colors: [4, 7], pad: [0, 0], cancel: [2, 5] },
+  10: { ...BANDS[10], pad: [0, 0], cancel: [4, 9] },
+};
+// 人の手応えまで見る帯は狭く、10手では50回を超えて引き直す号がある。
+// 旧い帯の号（第1〜277号）は最大4回で収まっていたので、上げても過去号は変わらない
+export const MAX_SHIFT = 200;
 
 export function featuresOf(cellSeq) {
   const on = targetOf(cellSeq).filter(v => v !== 0);
   return { inked: on.length, colors: new Set(on).size };
 }
 
+// 人が詰まるのは手数よりも「盤に見えない手」。同じ色が偶数回重なって消えたマス（cancel）と、
+// 盤面に効かないのに枠を埋めるため同じ場所へ二度押す手の組（pad）を数える。
+// 答えは一つとは限らないので、色ごとに枠へ収まる解をすべて当たり、人にいちばん易しいものを採る。
+function easiestPlane(plane, slots) {
+  const base = solvePlane(plane);
+  let best = null;
+  for (let s = 0; s < (1 << KERNEL.length); s++) {
+    let x = base;
+    for (let k = 0; k < KERNEL.length; k++) if (s & (1 << k)) x ^= KERNEL[k];
+    const w = popcount(x);
+    if (w > slots || (slots - w) % 2) continue;
+    const cover = new Array(SZ).fill(0);
+    for (let i = 0; i < SZ; i++) {
+      if (!(x >> i & 1)) continue;
+      for (let j = 0; j < SZ; j++) if (MASK[i] >> j & 1) cover[j]++;
+    }
+    const one = { pad: (slots - w) / 2, cancel: cover.filter(c => c >= 2 && c % 2 === 0).length };
+    if (!best || one.pad < best.pad || (one.pad === best.pad && one.cancel < best.cancel)) best = one;
+  }
+  return best;
+}
+
+export function humanOf(cellSeq) {
+  const n = slotCounts(cellSeq.length);
+  const per = planesOf(targetOf(cellSeq)).map((p, c) => easiestPlane(p, n[c]));
+  return {
+    pad: per.reduce((a, p) => a + p.pad, 0),
+    cancel: per.reduce((a, p) => a + p.cancel, 0),
+  };
+}
+
+const within = (v, range) => !range || (v >= range[0] && v <= range[1]);
+
+// pad と cancel は帯に書いたときだけ見る。書いていない BANDS（過去の日刊号）の選別は変わらない
 export function inBand(cellSeq, level, bands = BANDS) {
   const b = bands[level];
   if (!b) return true;
   const f = featuresOf(cellSeq);
-  return f.inked >= b.inked[0] && f.inked <= b.inked[1]
-    && f.colors >= b.colors[0] && f.colors <= b.colors[1];
+  if (!within(f.inked, b.inked) || !within(f.colors, b.colors)) return false;
+  if (!b.pad && !b.cancel) return true;
+  const h = humanOf(cellSeq);
+  return within(h.pad, b.pad) && within(h.cancel, b.cancel);
 }
 
 // 帯に入るまで引き直す。入りきらなくても出題は止めない。

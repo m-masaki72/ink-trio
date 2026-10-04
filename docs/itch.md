@@ -70,7 +70,7 @@ Ink Trio
 
 - **日刊** は毎日 5 問（3手・6手・6手・10手・10手）。出題は日付から決まるので、**同じ日は誰が開いても同じ 5 問**です
 - 号は消えません。さかのぼって過去の号もいつでも遊べます
-- **時間走** は 5 分で 10 手の課題を何問さばけるか。出題は毎回プールから引くので、同じ並びは二度と来ません
+- **時間走** は 5 分で 7 手の課題を何問さばけるか。出題は毎回プールから引くので、同じ並びは二度と来ません
 - 5 問そろえると結果を写せます。共有テキストは色ではなく、この作品自身の数字表記（0〜7）です
 
 **色が見分けにくくても遊べます**
@@ -115,7 +115,7 @@ hand-built practice boards walk you through that, one idea at a time.
 
 - **Daily** is five puzzles a day (3, 6, 6, 10, 10 moves). They are derived from the date, so **everyone gets the same five on the same day**
 - Issues never expire. You can go back and play any past issue
-- **Time run** gives you five minutes to clear as many 10-move boards as you can. Boards are drawn from a pool, so the same run never comes twice
+- **Time run** gives you five minutes to clear as many 7-move boards as you can. Boards are drawn from a pool, so the same run never comes twice
 - Finish all five and you can copy your result. The share text uses the game's own colour-free notation (0–7), not coloured squares
 
 **Playable without relying on colour**

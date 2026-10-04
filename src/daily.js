@@ -1,12 +1,16 @@
 // 日刊号。号番号だけから出題が決まり、号の記録の勘定もここで閉じる。
 // DOM にも保存にも触らない。
-// EPOCH / SHAPE / 種の混ぜ方を変えると過去号が別の盤面に化けるので、
+// EPOCH / SHAPE / HUMAN_FROM / 種の混ぜ方を変えると過去号が別の盤面に化けるので、
 // tests/daily.test.js が代表号を実値で固定して見張っている。
 
-import { BANDS, pickInBand } from "./puzzles.js";
+import { BANDS, HUMAN_BANDS, pickInBand } from "./puzzles.js";
 
 export const EPOCH = "2026-01-01";        // 第1号の日
 export const SHAPE = [3, 6, 6, 10, 10];   // 1日の型。入りは軽く、後半で歯ごたえ
+// この号から、人の手応え（消えた重なり・空押し）でも選別する。
+// 動かすと、旧い号と新しい号の境目にある号が別の盤面に化ける
+export const HUMAN_FROM = 278;
+export const bandsOf = issue => (issue >= HUMAN_FROM ? HUMAN_BANDS : BANDS);
 
 const DAY = 86400000;
 
@@ -34,7 +38,7 @@ export function seeded(seed) {
 const seedFor = (issue, slot, shift) =>
   (issue * 1000003 + slot * 10007 + shift * 97) >>> 0;
 
-export const puzzleOf = (issue, slot, level, bands = BANDS) =>
+export const puzzleOf = (issue, slot, level, bands = bandsOf(issue)) =>
   pickInBand(level, k => seeded(seedFor(issue, slot, k)), bands);
 
 export const issueSet = (issue, shape = SHAPE) =>

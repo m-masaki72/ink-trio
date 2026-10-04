@@ -3,15 +3,15 @@
 // 多重アカウントで練習しても別の盤が来るだけになる。
 // 時計と乱数を注入するので、ブラウザなしで検証できる。
 
-import { pickInBand } from "./puzzles.js";
+import { HUMAN_BANDS, pickInBand } from "./puzzles.js";
 
-export const RUSH_LEVEL = 10;
+export const RUSH_LEVEL = 7;
 export const RUSH_MS = 300000;      // 5分
 
-// 号に紐づかないので素の乱数で引く。帯は日刊と同じものを使う。
+// 号に紐づかないので素の乱数で引く。帯は人の手応えまで揃えたものを使う。
 // 難度が揃っていないと、問数で比べる意味がなくなる
 export const pickPuzzle = (random = Math.random, level = RUSH_LEVEL) =>
-  pickInBand(level, () => random);
+  pickInBand(level, () => random, HUMAN_BANDS);
 
 export function createRun({ now, random = Math.random, limit = RUSH_MS, level = RUSH_LEVEL }) {
   let startedAt = null;

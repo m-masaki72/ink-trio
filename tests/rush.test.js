@@ -1,7 +1,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { RUSH_LEVEL, RUSH_MS, pickPuzzle, createRun, better } from "../src/rush.js";
-import { buildPuzzle, inBand } from "../src/puzzles.js";
+import { HUMAN_BANDS, buildPuzzle, inBand } from "../src/puzzles.js";
 
 // 時計を手で進める。実時間に頼るとテストが遅くも脆くもなる
 function 時計(start = 0) {
@@ -32,13 +32,13 @@ test("走り出すと盤が来て、時間が減る", () => {
   assert.equal(run.remaining(), RUSH_MS - 1000);
 });
 
-// 出題は10手ちょうどで、帯にも収まっていないと問数で比べる意味がなくなる
-test("出てくる盤は十手ちょうどで、帯に収まる", () => {
+// 手数ちょうどで、人の手応えの帯にも収まっていないと問数で比べる意味がなくなる
+test("出てくる盤は七手ちょうどで、人の手応えの帯に収まる", () => {
   for (let s = 1; s <= 30; s++) {
     const seq = pickPuzzle(乱数(s));
     assert.equal(seq.length, RUSH_LEVEL);
     assert.equal(buildPuzzle(seq).par, RUSH_LEVEL, `種${s} の最短手数`);
-    assert.ok(inBand(seq, RUSH_LEVEL), `種${s} が帯の外`);
+    assert.ok(inBand(seq, RUSH_LEVEL, HUMAN_BANDS), `種${s} が帯の外`);
   }
 });
 

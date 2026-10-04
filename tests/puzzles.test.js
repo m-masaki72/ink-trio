@@ -1,7 +1,9 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { SZ, SEQ, M, Y, B, trueMinimum } from "../src/rules.js";
-import { TUTORIAL, FALLBACK, GENERATE_ATTEMPTS, buildPuzzle, generateSequence } from "../src/puzzles.js";
+import {
+  TUTORIAL, FALLBACK, GENERATE_ATTEMPTS, buildPuzzle, generateSequence, humanOf,
+} from "../src/puzzles.js";
 
 // 決定的な擬似乱数。生成の検査に Math.random を混ぜない。
 function seeded(seed) {
@@ -86,4 +88,26 @@ test("生成した盤面は答えの手順どおりに押せば揃う", () => {
     }
   });
   assert.deepEqual(board, target);
+});
+
+/* ---------- 人の手応え ---------- */
+
+test("重ならない手は、見えない手として数えない", () => {
+  assert.deepEqual(humanOf([6, 8, 16]), { pad: 0, cancel: 0 });
+});
+
+test("同じ色が重なって消えたマスを数える", () => {
+  // 一手目と四手目のマゼンタが、中心の1マスで打ち消し合う
+  assert.deepEqual(humanOf([6, 8, 16, 18]), { pad: 0, cancel: 1 });
+});
+
+test("盤面に効かず枠を埋めるだけの二度押しを空押しとして数える", () => {
+  // マゼンタは要らないが一手目は必ずマゼンタ。同じ場所へ二度押して消すしかない
+  assert.equal(humanOf([12, 0, 4, 12]).pad, 1);
+});
+
+// 押した手順どおりに数えると、人が見て取れる易しい読み方を見落とす。
+// 3×3を二つずらして中央の列を消した形は、端で切れた二つの手としても読める
+test("易しい別解があれば、そちらで数える", () => {
+  assert.equal(humanOf([11, 0, 0, 13]).cancel, 0);
 });
